@@ -1,0 +1,128 @@
+/* ===== COULEURS & VARIABLES ===== */
+:root {
+  --purple: #7B2D8B;
+  --purple-light: #f3e8f7;
+  --bg-page: #f0e8f5;
+  --input-border: #d8b4e8;
+  --input-focus: #7B2D8B;
+  --text-dark: #1a1a1a;
+  --text-label: #333;
+  --white: #ffffff;
+}
+
+/* ===== PAGE ===== */
+body {
+  background-color: var(--bg-page);
+}
+
+/* ===== TITRE PRINCIPAL ===== */
+.text-purple {
+  color: var(--purple);
+}
+
+/* ===== CARTES / SECTIONS ===== */
+#profile-section .bg-white,
+#password-section.bg-white {
+  background-color: var(--white) !important;
+  border-radius: 1rem !important;        /* rounded-4 */
+  padding: 1.5rem !important;            /* p-4 */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* ===== TITRES DE SECTION ===== */
+h5.mb-3 {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--text-dark);
+}
+
+/* ===== LABELS ===== */
+.form-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-label);
+  margin-bottom: 0.25rem;
+}
+
+/* ===== INPUTS ===== */
+.form-control,
+.barbi-input {
+  border: 1.5px solid var(--input-border);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  color: #555;
+  background-color: var(--white);
+  padding: 0.4rem 0.75rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-control:focus,
+.barbi-input:focus {
+  border-color: var(--input-focus);
+  box-shadow: 0 0 0 3px rgba(123, 45, 139, 0.15);
+  outline: none;
+}
+
+/* Placeholder en italic clair */
+.form-control::placeholder,
+.barbi-input::placeholder {
+  color: #bbb;
+  font-style: italic;
+}
+
+/* ===== BOUTON MODIFIER (violet) ===== */
+.btn-purple {
+  background-color: var(--purple);
+  color: var(--white);
+  border: none;
+  border-radius: 8px;
+  padding: 0.45rem 1.4rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.btn-purple:hover {
+  background-color: #6a2478;
+  color: var(--white);
+}
+
+.btn-purple:active {
+  transform: scale(0.97);
+}
+
+/* ===== LIGNE HORIZONTALE ===== */
+hr {
+  border-color: #e0d0eb;
+  margin-bottom: 1.25rem;
+}
+
+/* ===== ALERTES ===== */
+.alert-success {
+  background-color: #d4edda;
+  border-color: #c3e6cb;
+  color: #155724;
+  font-size: 0.82rem;
+  border-radius: 6px;
+}
+
+.alert-danger {
+  background-color: #f8d7da;
+  border-color: #f5c6cb;
+  color: #721c24;
+  font-size: 0.82rem;
+  border-radius: 6px;
+}
+
+/* ===== ICÔNE ŒIL (toggle password) ===== */
+.fa-eye,
+.fa-eye-slash {
+  color: #aaa;
+  font-size: 0.85rem;
+}
+
+/* ===== ESPACEMENT ENTRE LES DEUX SECTIONS ===== */
+.my-5 {
+  margin-top: 2rem !important;
+  margin-bottom: 2rem !important;
+}

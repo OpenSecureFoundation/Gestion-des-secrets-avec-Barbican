@@ -1,0 +1,122 @@
+{% extends "base_auth.html" %}
+
+{% load static %}
+
+{% block content %}
+<div class="auth-card tall shadow">
+    <div class="text-center mb-4">
+        <img src="{% static 'img/logo.png' %}" alt="Logo">
+    </div>
+
+    {% if error %}
+    <div class="alert alert-danger text-center p-2 mb-3">
+        {{ error }}
+    </div>
+    {% endif %}
+
+    {% load crispy_forms_tags %}
+
+    <form hx-post="{% url 'accounts:register' %}" hx-push-url="true" hx-target="#auth-display" onsubmit="return validatePasswords()">
+        {% csrf_token %}
+        
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <input type="text" name="first_name" class="form-control form-control-sm barbi-input" 
+                placeholder="Prénom(s)" value="{{ form_data.first_name}}" required>
+            </div>
+            <div class="col-md-6 mb-3">
+                <input type="text" name="last_name" class="form-control form-control-sm barbi-input" 
+                placeholder="Nom(s)" value="{{ form_data.last_name}}" required>
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <input type="text" name="username" class="form-control form-control-sm barbi-input" 
+            placeholder="Pseudonyme" value="{{ form_data.username}}" required>
+        </div>
+        
+        <div class="mb-3">
+            <input type="email" name="email" class="form-control form-control-sm barbi-input" 
+            placeholder="Adresse mail" value="{{ form_data.email}}" required>
+        </div>
+        
+        <div class="mb-3">
+            <div class="position-relative">
+                <input type="password" id="password_field" name="password" 
+                    class="form-control form-control-sm barbi-input" 
+                    placeholder="Mot de passe" value="{{ form_data.password }}" required>
+                
+                <span class="position-absolute end-0 top-50 translate-middle-y me-2" 
+                    onclick="togglePassword('password_field', this)" 
+                    style="cursor: pointer; z-index: 10;">
+                    <i class="fa fa-eye text-secondary" id="togglePasswordIcon"></i>
+                </span>
+            </div>
+        </div>    
+        
+        <div class="mb-3">
+            <div class="position-relative">
+                <input type="password" id="confirm_password" name="confirm_password" class="form-control form-control-sm barbi-input" 
+                    placeholder="Confirmer le mot de passe" value="{{ form_data.confirm_password}}" required>
+
+                <span class="position-absolute end-0 top-50 translate-middle-y me-2" 
+                    onclick="togglePassword('confirm_password', this)" 
+                    style="cursor: pointer; z-index: 10;">
+                    <i class="fa fa-eye text-secondary" id="togglePasswordIcon"></i>
+                </span>
+            </div>   
+        </div>    
+            
+        {{ form|crispy }}
+
+        <button type="submit" class="btn btn-barbi w-100 rounded-pill py-2">S'inscrire</button> 
+
+        <div class="text-center mt-3">
+            <p class="small">Déjà un compte ? 
+                <span class="barbi-link" 
+                      hx-get="{% url 'accounts:login' %}"
+                      hx-push-url="true" 
+                      hx-target="#auth-display" 
+                      style="cursor:pointer; font-weight:bold;">
+                      Se connecter
+                </span> 
+            </p>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+
+<!-- Script pour valider le mot de passe. -->
+<script>
+function validatePasswords() {
+    const pass = document.getElementById('password').value;
+    const confirm = document.getElementById('confirm_password').value;
+    const errorDiv = document.getElementById('password-error');
+
+    if (pass !== confirm) {
+        errorDiv.style.display = 'block';
+        return false; // Empêche l'envoi du formulaire
+    }
+    errorDiv.style.display = 'none';
+    return true;
+}
+</script>
+
+<!-- Script pour afficher ou cacher le mot de passe. -->
+<script>
+function togglePassword(inputId, element) {
+    const input = document.getElementById(inputId);
+    const icon = element.querySelector('i');
+    
+    if (input.type === "password") {
+        input.type = "text";
+        icon.classList.remove("fa-eye");
+        icon.classList.add("fa-eye-slash");
+    } else {
+        input.type = "password";
+        icon.classList.remove("fa-eye-slash");
+        icon.classList.add("fa-eye");
+    }
+}
+</script>

@@ -1,0 +1,159 @@
+/* ===== VARIABLES ===== */
+:root {
+  --purple: #7B2D8B;
+  --purple-light: #f3e8f7;
+  --purple-border: #c084d4;
+  --sidebar-width: 260px;
+  --navbar-height: 60px;
+}
+
+/* ===== BODY ===== */
+body {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  min-height: 100vh;
+  background-color: #f8f0fc;
+}
+
+/* ===== SIDEBAR ===== */
+.sidebar {
+  width: var(--sidebar-width) !important;
+  min-height: 100vh;
+  background-color: #ffffff !important;
+  border-right: 2px solid var(--purple-border) !important;
+  padding: 1.5rem 1rem !important;
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  z-index: 200;
+  transition: transform 0.3s ease;
+}
+
+/* Liens sidebar */
+.sidebar .nav-link {
+  color: #333 !important;
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background 0.2s ease;
+  text-decoration: none;
+}
+
+.sidebar .nav-link:hover {
+  background-color: var(--purple-light) !important;
+  color: var(--purple) !important;
+}
+
+/* Lien actif — bouton violet pilule */
+.sidebar .nav-link.active {
+  background-color: var(--purple) !important;
+  color: #ffffff !important;
+  font-weight: 600;
+  border-radius: 25px !important;
+  padding: 0.65rem 1.2rem !important;
+}
+
+.sidebar .nav-link.active i {
+  color: #ffffff !important;
+}
+
+.sidebar .nav-link i {
+  font-size: 1rem;
+  color: #555;
+  width: 20px;
+  text-align: center;
+}
+
+/* ===== MAIN CONTENT ===== */
+.main-content {
+  margin-left: var(--sidebar-width) !important;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* ===== NAVBAR ===== */
+.main-content header {
+  height: var(--navbar-height);
+  background-color: var(--purple-border) !important;
+  border-bottom: 2px solid var(--purple-border) !important;
+  padding: 0 1.5rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  position: sticky;
+  top: 0;
+  z-index: 199;
+  margin-bottom: 0 !important;
+}
+
+/* Icône utilisateur */
+.text-purple {
+  color: var(--purple) !important;
+}
+
+/* ===== HAMBURGER ===== */
+.btn-hamburger {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.4rem;
+  color: var(--purple);
+  font-size: 1.5rem;
+}
+
+/* ===== OVERLAY ===== */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 199;
+}
+
+.sidebar-overlay.active {
+  display: block;
+}
+
+/* ===== CONTENU ===== */
+#main-display {
+  padding: 2rem;
+  background-color: #f8f0fc;
+  flex: 1;
+}
+
+/* ===== ANIMATION ===== */
+.fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+  .sidebar {
+    transform: translateX(-100%);
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  .btn-hamburger {
+    display: block !important;
+  }
+
+  .main-content {
+    margin-left: 0 !important;
+  }
+}

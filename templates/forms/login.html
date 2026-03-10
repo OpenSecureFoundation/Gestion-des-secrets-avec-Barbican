@@ -1,0 +1,81 @@
+{% extends "base_auth.html" %}
+
+{% load static %}
+
+{% block content %}
+<div id="auth-display" class="d-flex justify-content-center align-items-center vh-100">
+    <div class="auth-card shadow">
+        <div class="text-center mb-4">
+            <img src="{% static 'img/logo.png' %}" alt="Logo" width="120">
+        </div>
+
+        {% if error %}
+            <div class="alert alert-danger">{{ error }}</div>
+        {% endif %}
+
+        {% load crispy_forms_tags %}
+
+        <form id="login-form" hx-post="{% url 'accounts:login' %}" hx-push-url="true" hx-target="#auth-display">
+            {% csrf_token %}
+            <div class="mb-3">
+                <input type="text" name="username" class="form-control form-control-sm barbi-input" 
+                placeholder="Pseudonyme" value="{{ form_data.username}}" required>
+            </div>
+            <div class="mb-3">
+                <div class="position-relative">
+                    <input type="password" id="password_field" name="password" 
+                        class="form-control form-control-sm barbi-input" 
+                        placeholder="Mot de passe" value="{{ form_data.password }}" required>
+                    
+                    <span class="position-absolute end-0 top-50 translate-middle-y me-2" 
+                        onclick="togglePassword('password_field', this)" 
+                        style="cursor: pointer; z-index: 10;">
+                        <i class="fa fa-eye text-secondary" id="togglePasswordIcon"></i>
+                    </span>
+                </div>
+                <a href="#" class="text-muted small d-block mt-1">Mot de passe oublie ?</a>
+            </div>
+
+            {{ form|crispy }}
+
+            <button type="submit" class="btn btn-barbi w-100 rounded-pill py-2">
+                <a href="{% url 'accounts:profile' %}" style="text-decoration: none; color: inherit; cursor: default;">
+                    Se connecter
+                </a>
+            </button> 
+
+            <div class="text-center mt-3">
+                <p class="small">Pas de compte ? 
+                    <span class="barbi-link" 
+                            hx-get="{% url 'accounts:register' %}"
+                            hx-push-url="true" 
+                            hx-target="#auth-display" 
+                            style="cursor:pointer; font-weight:bold;">
+                            Creer un compte
+                    </span>
+                </p>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+
+<!-- Script pour afficher ou cacher le mot de passe -->
+<script>
+function togglePassword(inputId, element) {
+    const input = document.getElementById(inputId);
+    const icon = element.querySelector('i');
+    
+    if (input.type === "password") {
+        input.type = "text";
+        icon.classList.remove("fa-eye");
+        icon.classList.add("fa-eye-slash");
+    } else {
+        input.type = "password";
+        icon.classList.remove("fa-eye-slash");
+        icon.classList.add("fa-eye");
+    }
+}
+
+</script>

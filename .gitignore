@@ -1,0 +1,6 @@
+# On ignore tout le contenu du dossier Media
+Media/*
+.env
+
+# Sauf les fichiers .gitkeep pour garder la structure des dossiers
+!Media/.gitkeep

@@ -1,0 +1,109 @@
+/* Variables de couleurs BarbiLink */
+:root {
+    --barbi-purple: #4a004e; /* Violet foncé des boutons et bordures */
+    --barbi-light-bg: #fdfaff;
+    --white: #ffffff;
+}
+
+/* Reset de base et centrage */
+body {
+    background-color: var(--barbi-light-bg);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    padding: 20px; /* Espace pour les petits écrans */
+}
+
+/* Carte d'authentification (Design Responsive) */
+.auth-card {
+    background: var(--white);
+    border: 2px solid var(--barbi-purple); /* Bordure violette identique à la maquette */
+    border-radius: 40px; /* Bordures très arrondies */
+    padding: 40px 30px;
+    width: 100%;
+    max-width: 600px; /* Largeur fixe sur PC, fluide sur Mobile */
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+    max-height: 90vh;      /* Limite la hauteur à 90% de l'écran */
+}
+
+/* Logo et Titre */
+.text-center img {
+    max-width: 100px;
+    height: auto;
+    margin-bottom: 10px;
+}
+
+.fw-bold {
+    color: #000;
+    font-size: 1.8rem;
+}
+
+/* Champs de saisie */
+.barbi-input {
+    border: 1.5px solid var(--barbi-purple) !important;
+    border-radius: 8px !important;
+    padding: 12px !important;
+    font-size: 14px;
+}
+
+.barbi-input:focus {
+    box-shadow: 0 0 0 0.25 rem rgba(74, 0, 78, 0.25) !important;
+    margin-bottom: 15px;
+    border-color: var(--barbi-purple) !important;
+}
+
+/* Bouton Violet BarbiLink */
+.btn-barbi {
+    background-color: var(--barbi-purple) !important;
+    border: none !important;
+    color: white !important;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.btn-barbi:hover {
+    background-color: #6a0070 !important;
+    transform: translateY(-2px);
+}
+
+/* Liens et texte cliquable */
+.barbi-link {
+    color: var(--barbi-purple);
+    text-decoration: none;
+}
+
+.barbi-link:hover {
+    text-decoration: underline;
+}
+
+.text-muted.small {
+    text-decoration: none;
+    color: #666 !important;
+}
+
+/* Ajustements pour Tablettes et Mobiles */
+@media (max-width: 576px) {
+    .auth-card {
+        padding: 25px 20px;
+        border-radius: 30px; /* Légèrement moins arrondi sur petit écran */
+    }
+
+    .fw-bold {
+        font-size: 1.5rem;
+    }
+
+    .btn-barbi {
+        padding: 10px ;
+    }
+}
+
+/* Gestion du contenu spécifique au formulaire d'inscription (plus long) */
+.auth-card.tall {
+    margin-top: 20px;
+    margin-bottom: 20px;
+}

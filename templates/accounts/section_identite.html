@@ -1,0 +1,35 @@
+<div id="profile-section">
+    <div class="bg-white p-4 rounded-4 shadow-sm mb-4">
+        <h5 class="mb-3">Modifier mon identité</h5>
+        <hr>
+
+        {% if error_message %}
+            <div class="alert alert-danger small">{{ error_message }}</div>
+        {% elif success_message %}
+            <div class="alert alert-success small">{{ success_message }}</div>
+        {% endif %}
+
+        <form hx-post="{% url 'accounts:change_identite' %}" hx-target="#profile-section" hx-swap="outerHTML">
+            {% csrf_token %}
+            <div class="row g-3">
+                <div class="col-12">
+                    <label class="form-label">Prénom :</label>
+                    <input type="text" name="first_name" class="form-control" value="{{ user.first_name }}">
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Nom :</label>
+                    <input type="text" name="last_name" class="form-control" value="{{ user.last_name }}">
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Pseudonyme :</label>
+                    <input type="text" name="username" class="form-control" value="{{ user.username }}">
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Adresse mail :</label>
+                    <input type="email" name="email" class="form-control" value="{{ user.email }}">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-purple mt-3">Modifier</button>
+        </form>
+    </div>
+</div>

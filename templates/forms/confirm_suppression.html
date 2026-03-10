@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% load static %}
+
+{% block content %}
+<div class="d-flex justify-content-center align-items-center" style="min-height: 70vh;">
+    <div class="p-5 bg-white shadow" style="border: 2px solid #8b008b; border-radius: 40px; max-width: 500px;">
+        <h5 class="text-center fw-bold mb-4" style="color: #4a0e4e;">
+            Veuillez saisir votre mot de passe pour confirmer la suppression de votre compte
+        </h5>
+
+        {% include "forms/confirm_supp_partiel.html" %}
+
+    </div>
+</div>
+{% endblock %}
