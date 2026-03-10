@@ -1,6 +1,9 @@
 # On ignore tout le contenu du dossier Media
-Media/*
+.sqlite3
+__pycache__/
+venv/
 .env
+media/*
 
 # Sauf les fichiers .gitkeep pour garder la structure des dossiers
 !Media/.gitkeep
