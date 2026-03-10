@@ -1,5 +1,5 @@
 # On ignore tout le contenu du dossier Media
-.sqlite3
+db.sqlite3
 __pycache__/
 venv/
 .env
