@@ -8,9 +8,10 @@
     
     <link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}">
     <link rel="stylesheet" href="{% static 'css/all.min.css' %}">
-    <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+    <link rel="stylesheet" href="{% static 'css/formulaires.css' %}">
     <link rel="stylesheet" href="{% static 'css/profile.css' %}">
     <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=1.0">
+    <link rel="stylesheet" href="{% static 'css/apps.css' %}">
     
     <script src="{% static 'js/htmx.min.js' %}"></script>
 </head>
@@ -22,12 +23,21 @@
         
         <ul class="nav flex-column mt-4">
             <li class="nav-item">
+                <a class="nav-link" 
+                   hx-get="{% url 'apps_manager:list_app' %}" 
+                   hx-target="#main-display" 
+                   hx-push-url="true"
+                   style="cursor:pointer;">
+                    <i class="fas fa-user-cog me-2"></i> Mes applications
+                </a>
+            </li>
+            <li class="nav-item">
                 <a class="nav-link active" 
                    hx-get="{% url 'accounts:profile' %}" 
                    hx-target="#main-display" 
                    hx-push-url="true"
                    style="cursor:pointer;">
-                    <i class="fas fa-user-cog me-2"></i> Modifier mon compte
+                    <i class="fas fa-user-cog me-2"></i> Mon compte
                 </a>
             </li>
         </ul>
@@ -72,6 +82,9 @@
     </div>
 
     <script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
+     {% block extra_js %}
+     
+     {% endblock %}
 </body>
 </html>
 

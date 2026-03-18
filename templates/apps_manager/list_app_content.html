@@ -1,0 +1,38 @@
+<div class="container-fluid p-4" style="background-color: var(--barbi-light-bg); min-height: 80vh;">
+    
+  <div class="d-flex justify-content-between align-items-center mb-5">
+    <h3 class="fw-bold m-0 text-purple">Mes applications</h3>
+
+    <div class="search-container d-flex align-items-center">
+      <input type="text" class="search-input" placeholder="">
+      <button class="search-btn">
+        <i class="fas fa-search"></i>
+      </button>
+    </div>
+  </div>
+
+  <div class="apps-table-container d-none d-md-block mb-3 px-3">
+    <div class="row fw-bold text-muted small text-uppercase">
+        <div class="col-md-3">ID Keystone</div>
+        <div class="col-md-2 text-center">Nom</div>
+        <div class="col-md-2 text-center">Nom du secret</div>
+        <div class="col-md-2 text-center">Validité</div>
+        <div class="col-md-2 text-center">Date d'expiration</div>
+    </div>
+</div>
+
+
+
+  {% include "apps_manager/list_app_partiel.html" %}
+
+
+  <div class="text-center mt-5" >
+    <a href="{% url 'apps_manager:creer_app' %}">
+      <button class="btn btn-barbi px-4 py-2 rounded-pill shadow-sm" 
+          style="font-size: 1.1rem; min-width: 250px; font-weight: bold; cursor: pointer;
+          background-color: #4a0e4e; color: white; border: none;">
+        Ajouter une application
+      </button>
+    </a>
+  </div>
+</div>

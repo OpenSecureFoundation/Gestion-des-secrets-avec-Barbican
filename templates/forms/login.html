@@ -23,12 +23,12 @@
             </div>
             <div class="mb-3">
                 <div class="position-relative">
-                    <input type="password" id="password_field" name="password" 
+                    <input type="password" id="password" name="password" 
                         class="form-control form-control-sm barbi-input" 
                         placeholder="Mot de passe" value="{{ form_data.password }}" required>
                     
                     <span class="position-absolute end-0 top-50 translate-middle-y me-2" 
-                        onclick="togglePassword('password_field', this)" 
+                        onclick="togglePassword('password', this)" 
                         style="cursor: pointer; z-index: 10;">
                         <i class="fa fa-eye text-secondary" id="togglePasswordIcon"></i>
                     </span>
@@ -38,11 +38,11 @@
 
             {{ form|crispy }}
 
-            <button type="submit" class="btn btn-barbi w-100 rounded-pill py-2">
-                <a href="{% url 'accounts:profile' %}" style="text-decoration: none; color: inherit; cursor: default;">
+            <a href="{% url 'accounts:profile' %}" style="text-decoration: none; color: inherit; cursor: default;">
+                <button type="submit" class="btn btn-barbi w-100 rounded-pill py-2">
                     Se connecter
-                </a>
-            </button> 
+                </button> 
+            </a>
 
             <div class="text-center mt-3">
                 <p class="small">Pas de compte ? 
@@ -77,5 +77,4 @@ function togglePassword(inputId, element) {
         icon.classList.add("fa-eye");
     }
 }
-
 </script>

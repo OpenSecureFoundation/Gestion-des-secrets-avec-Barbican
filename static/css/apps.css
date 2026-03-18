@@ -1,0 +1,36 @@
+/* Barre de recherche */
+.search-input {
+    border: 1.5px solid var(--barbi-purple);
+    border-radius: 8px 0 0 8px;
+    padding: 5px 15px;
+    outline: none;
+    width: 200px;
+}
+
+.search-btn {
+    background: white;
+    border: 1.5px solid var(--barbi-purple);
+    border-left: none;
+    border-radius: 0 8px 8px 0;
+    padding: 5px 12px;
+    color: #333;
+}
+
+/* Étiquettes du tableau (Labels) */
+.table-label {
+    border: 1.5px solid var(--barbi-purple);
+    color: #000;
+    font-weight: bold;
+    padding: 2px 12px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    background-color: white;
+    white-space: nowrap;
+}
+
+/* Cas particulier pour l'ID qui est plus large sur ton image */
+.label-id {
+    min-width: 150px;
+    text-align: center;
+}
+

@@ -23,7 +23,9 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     
     ######## Nouveaux ajouts #########
-    path('accounts/', include('accounts.urls')), 
+    path('', include('accounts.urls')), 
+    path('apps/', include('apps_manager.urls')),
+    path('secrets/', include('secrets_manager.urls')), 
 ]
 
 

@@ -1,0 +1,39 @@
+<h5 class="text-center fw-bold mb-4" style="color: #4a0e4e;">
+    Nouvelle application
+</h5>
+
+{% if error %}
+    <div class="alert alert-danger">{{ error }}</div>
+{% endif %}
+
+<form hx-post="{% url 'apps_manager:creer_app' %}" hx-target="#main-display">
+    {% csrf_token %}
+    
+    <div class="mb-4">
+        <label class="form-label fw-bold mb-2">
+            Nom de l’application :
+        </label>
+        <input type="text" name="name" class="form-control barbi-input" 
+                placeholder="Ex: MonAppService" value="{{ form_data.name}}" required>
+    </div>
+
+    <div class="mb-4">
+        <label class="form-label fw-bold mb-2">
+            Description :
+        </label>
+        <textarea name="description" class="form-control barbi-input" 
+                    rows="4" placeholder="À quoi sert cette application ?" value="{{ form_data.description}}" required></textarea>
+    </div>
+
+    <div class="text-center">
+        <a href="{% url 'apps_manager:list_app' %}" style="text-decoration: none; color: inherit; cursor: default;">
+            <button type="submit" class="btn text-white px-5 py-2 fw-bold" 
+                style="background-color: #4a0e4e; border-radius: 25px;">
+                confirmer
+            </button>
+        </a>
+    </div>
+    <div class="text-center mt-3">
+        <a href="{% url 'apps_manager:list_app' %}" class="text-muted small">Annuler</a>
+    </div>
+</form>

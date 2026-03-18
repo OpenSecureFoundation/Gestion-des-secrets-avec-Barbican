@@ -46,6 +46,41 @@ def token_verification(pseudo, mdp):
         return response.headers.get('X-Subject-Token')
     return None
 
+# Fonction pour generer un nouveau token scopé sur un projet spécifique en utilisant un token existant
+def token_keystone_scope(token_actuel, project_id):
+    url = f"{settings.KEYSTONE_URL}/auth/tokens"
+    print(token_actuel)
+    payload = {
+        "auth": {
+            "identity": {
+                "methods": ["token"],
+                "token": {
+                    "id": token_actuel  
+                }
+            },
+            "scope": {
+                "project": {
+                    "id": project_id  
+                }
+            }
+        }
+    }
+
+    try:
+        response = requests.post(url, json=payload)
+        
+        if response.status_code == 201:
+            nouveau_token = response.headers.get('X-Subject-Token')
+            print("Nouveau token généré avec succès via l'ancien token.")
+            return nouveau_token
+        else:
+            print(f"Erreur de re-scoping : {response.status_code} - {response.text}")
+            return None
+
+    except requests.exceptions.RequestException as e:
+        print(f"Erreur réseau : {str(e)}")
+        return None
+
 # Fonction d'authentification pour attribution de permission sur un projet
 def token_acces(pseudo, mdp, projet, domaine="Default", methode="password"):
     scope = {
@@ -59,10 +94,13 @@ def token_acces(pseudo, mdp, projet, domaine="Default", methode="password"):
     response = requests.post(url, json=data, headers=headers)
     
     if response.status_code == 201:
-        return response.headers.get('X-Subject-Token')
+        token = response.headers.get('X-Subject-Token')
+        data = response.json()
+        admin_id = data['token']['user']['id']
+        return token, admin_id 
     return None
 
-# Fonction de creation du token de l'administrateur de keystone
+# Fonction de recuperation du token de l'administrateur de keystone
 def get_admin_token():
     pseudo = settings.KEYSTONE_ADMIN_USERNAME
     domaine = settings.KEYSTONE_ADMIN_DOMAIN
@@ -70,9 +108,38 @@ def get_admin_token():
     projet = settings.KEYSTONE_ADMIN_PROJECT
        
     try:
-        return token_acces(pseudo=pseudo, mdp=mdp, projet=projet, domaine=domaine)    ####### Amelioration possible au niveau de la methode. Faut il prendre en compte d'autres methodes? Si oui comment?
+        var = token_acces(pseudo=pseudo, mdp=mdp, projet=projet, domaine=domaine)
+        return var[0]    ####### Amelioration possible au niveau de la methode. Faut il prendre en compte d'autres methodes? Si oui comment?
     except Exception as e:
-        print(f"Erreur de connexion pour le token: {e}. Verifiez vos parametres administrateurs")
+        print(f"Erreur de recuperation du token administrateur: {e}. Verifiez vos parametres administrateurs")
+        return None
+    
+# Fonction de recuperation de l'id de l'utlisateur de keystone
+def get_user_keystone_id():
+    pseudo = settings.KEYSTONE_ADMIN_USERNAME
+    domaine = settings.KEYSTONE_ADMIN_DOMAIN
+    mdp = settings.KEYSTONE_ADMIN_PASSWORD
+    projet = settings.KEYSTONE_ADMIN_PROJECT
+       
+    try:
+        var = token_acces(pseudo=pseudo, mdp=mdp, projet=projet, domaine=domaine)
+        return var[1]    ####### Amelioration possible au niveau de la methode. Faut il prendre en compte d'autres methodes? Si oui comment?
+    except Exception as e:
+        print(f"Erreur de recuperation de l'id administrateur: {e}. Verifiez vos parametres administrateurs")
+        return None
+
+# Fonction de recuperation de l'id de l'utilisateur barbican
+def get_user_barbican_id():
+    pseudo = settings.BARBICAN_USERNAME
+    domaine = settings.KEYSTONE_ADMIN_DOMAIN
+    mdp = settings.BARBICAN_PASSWORD
+    projet = settings.BARBICAN_PROJECT
+       
+    try:
+        var = token_acces(pseudo=pseudo, mdp=mdp, projet=projet, domaine=domaine)
+        return var[1]    ####### Amelioration possible au niveau de la methode. Faut il prendre en compte d'autres methodes? Si oui comment?
+    except Exception as e:
+        print(f"Erreur de recuperation de l'id de barbican: {e}. Verifiez vos parametres barbican")
         return None
 ###############################################################################################################################
 
@@ -209,6 +276,7 @@ def login_view(request):
 # Fonction pour se deconnecter de son compte utilisateur
 def logout_view(request):
     logout(request)
+    request.session.flush()
     messages.info(request, "Vous avez été déconnecté.")
     return redirect('accounts:login')
 
