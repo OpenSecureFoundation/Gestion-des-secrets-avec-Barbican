@@ -14,6 +14,7 @@ import os
 import sys
 from pathlib import Path
 from dotenv import load_dotenv
+from django.contrib.messages import constants as messages_constants
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -35,10 +36,20 @@ load_dotenv()
 # Indispensable : remet le compteur à zéro à chaque clic (activité)
 #SESSION_SAVE_EVERY_REQUEST = True
 
-#LOGIN_URL = 'login'
+LOGIN_URL = '/'
 
 
+# Mapping des niveaux de messages vers les classes Bootstrap
+MESSAGE_TAGS = {
+    messages_constants.ERROR: 'danger',
+}
 
+# Intervalle de vérification du renouvellement automatique (en secondes)
+AUTO_RENEWAL_INTERVAL = 86400  # 1 jour
+
+# Chemin vers la CA interne 
+CA_CERT_PATH = os.path.join(BASE_DIR, 'BarbiLink', 'CA_OpenSSL', 'certificat', 'ssl-cert-snakeoil.pem')
+CA_KEY_PATH = os.path.join(BASE_DIR, 'BarbiLink', 'CA_OpenSSL', 'cle', 'ssl-cert-snakeoil.key')
 
 # Chemin vers ton dossier de logs
 LOG_DIR = BASE_DIR / "logs"
@@ -86,11 +97,7 @@ KEYSTONE_ADMIN_PASSWORD = os.getenv('KEYSTONE_ADMIN_PASSWORD')
 KEYSTONE_ADMIN_PROJECT = os.getenv('KEYSTONE_ADMIN_PROJECT')
 KEYSTONE_ADMIN_DOMAIN = os.getenv('KEYSTONE_ADMIN_DOMAIN')
 
-# Récupère les variables d'environnement pour les CA
-CA_CERT_PATH = os.getenv('CA_CERT_PATH')
-CA_KEY_PATH  = os.getenv('CA_KEY_PATH')
-ACME_URL = os.getenv('ACME_URL')
-
+# Recupere les variables d'environnement de BARBICAN
 BARBICAN_URL = os.getenv('BARBICAN_URL')
 BARBICAN_USERNAME = os.getenv('BARBICAN_USERNAME')
 BARBICAN_PASSWORD = os.getenv('BARBICAN_PASSWORD')
@@ -104,7 +111,7 @@ BARBICAN_PROJECT = os.getenv('BARBICAN_PROJECT')
 SECRET_KEY = 'django-insecure-0h^gni4(qmsjrwk(j+$_fe7#vf4mr4*eon%r0c#kms-izc-&pe'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['192.168.100.251', 'localhost', '127.0.0.1']
 
@@ -126,6 +133,7 @@ INSTALLED_APPS = [
     'crispy_bootstrap5',
     'apps_manager',
     'secrets_manager',
+    'api_manager',
 ]
 
 MIDDLEWARE = [
@@ -212,6 +220,8 @@ STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
 
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
 MEDIA_URL = 'media/'
 
 MEDIA_ROOT = BASE_DIR / 'media'
@@ -219,3 +229,12 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # Les templates pour le signalement automatique des erreurs.
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
+
+# ── Configuration email (Gmail avec App Password) ──────────────────────────
+EMAIL_BACKEND   = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST      = 'smtp.gmail.com'
+EMAIL_PORT      = 587
+EMAIL_USE_TLS   = True
+EMAIL_HOST_USER     = os.getenv('EMAIL_HOST_USER', '')      # ex: barbilink.app@gmail.com
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')  # App Password Gmail (16 chars)
+DEFAULT_FROM_EMAIL  = os.getenv('EMAIL_HOST_USER', 'BarbiLink <barbilink.app@gmail.com>')

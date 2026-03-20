@@ -4,9 +4,15 @@
         <hr>
 
         {% if error_message %}
-            <div class="alert alert-danger small">{{ error_message }}</div>
+            <div class="alert alert-danger alert-dismissible fade show barbi-alert" role="alert">
+                <i class="fas fa-exclamation-circle me-2"></i>{{ error_message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
         {% elif success_message %}
-            <div class="alert alert-success small">{{ success_message }}</div>
+            <div class="alert alert-success alert-dismissible fade show barbi-alert" role="alert">
+                <i class="fas fa-check-circle me-2"></i>{{ success_message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
         {% endif %}
 
         <form hx-post="{% url 'accounts:change_identite' %}" hx-target="#profile-section" hx-swap="outerHTML">
@@ -29,7 +35,9 @@
                     <input type="email" name="email" class="form-control" value="{{ user.email }}">
                 </div>
             </div>
-            <button type="submit" class="btn btn-purple mt-3">Modifier</button>
+            <div class="d-flex justify-content-end mt-3">
+                <button type="submit" class="btn btn-purple">Modifier</button>
+            </div>
         </form>
     </div>
 </div>

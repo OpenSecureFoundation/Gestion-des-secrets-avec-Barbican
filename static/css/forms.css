@@ -1,109 +1,211 @@
-/* Variables de couleurs BarbiLink */
+/* ── Variables ── */
 :root {
-    --barbi-purple: #4a004e; /* Violet foncé des boutons et bordures */
-    --barbi-light-bg: #fdfaff;
-    --white: #ffffff;
+    --barbi-purple:     #4a0e4e;
+    --barbi-purple-mid: #7b1fa2;
+    --barbi-light:      #f9f9fb;
+    --border:           #e2e4e9;
+    --text-main:        #1a1a2e;
+    --text-muted:       #6b7280;
+    --white:            #ffffff;
 }
 
-/* Reset de base et centrage */
+/* ── Base ── */
 body {
-    background-color: var(--barbi-light-bg);
+    background: var(--barbi-light);
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
     margin: 0;
-    padding: 20px; /* Espace pour les petits écrans */
+    padding: 24px;
 }
 
-/* Carte d'authentification (Design Responsive) */
+/* ── Wrapper plein écran (cible HTMX) ── */
+.auth-page {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    min-height: calc(100vh - 48px);
+}
+
+/* ── Carte centrale ── */
 .auth-card {
     background: var(--white);
-    border: 2px solid var(--barbi-purple); /* Bordure violette identique à la maquette */
-    border-radius: 40px; /* Bordures très arrondies */
-    padding: 40px 30px;
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 40px 44px 36px;
     width: 100%;
-    max-width: 600px; /* Largeur fixe sur PC, fluide sur Mobile */
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
-    transition: all 0.3s ease;
-    max-height: 90vh;      /* Limite la hauteur à 90% de l'écran */
+    max-width: 460px;
+    box-shadow: 0 4px 28px rgba(0, 0, 0, 0.07);
 }
 
-/* Logo et Titre */
-.text-center img {
-    max-width: 100px;
-    height: auto;
-    margin-bottom: 10px;
+/* ── Logo ── */
+.auth-logo {
+    display: block;
+    width: 160px;
+    margin: 0 auto 28px;
 }
 
-.fw-bold {
-    color: #000;
-    font-size: 1.8rem;
+/* ── Titre ── */
+.auth-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text-main);
+    text-align: center;
+    margin-bottom: 28px;
 }
 
-/* Champs de saisie */
-.barbi-input {
-    border: 1.5px solid var(--barbi-purple) !important;
+/* ── Champ avec label ── */
+.auth-field {
+    margin-bottom: 18px;
+}
+
+.auth-field label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 6px;
+}
+
+.auth-field input.form-control {
+    border: 1.5px solid var(--border) !important;
+    border-radius: 8px !important;
+    padding: 10px 14px !important;
+    font-size: 14px !important;
+    color: var(--text-main);
+    height: auto !important;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.auth-field input.form-control:focus {
+    border-color: var(--barbi-purple-mid) !important;
+    box-shadow: 0 0 0 3px rgba(123, 31, 162, 0.10) !important;
+    outline: none;
+}
+
+/* ── Ligne label + lien (ex: Mot de passe + Oublié ?) ── */
+.auth-field-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.auth-field-header label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+    margin: 0;
+}
+
+.auth-field-header a {
+    font-size: 0.8rem;
+    color: var(--barbi-purple-mid);
+    text-decoration: none;
+}
+
+.auth-field-header a:hover {
+    text-decoration: underline;
+}
+
+/* ── Champ mot de passe avec bouton œil ── */
+.auth-pw-wrapper {
+    position: relative;
+}
+
+.auth-pw-wrapper input.form-control {
+    padding-right: 42px !important;
+}
+
+.auth-pw-wrapper .toggle-pw {
+    position: absolute;
+    right: 13px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: #9ca3af;
+    font-size: 1rem;
+    z-index: 5;
+    line-height: 1;
+}
+.auth-pw-wrapper .toggle-pw:hover {
+    color: #4a0e4e;
+}
+
+/* ── Se souvenir de moi ── */
+.auth-remember {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 22px;
+}
+
+.auth-remember input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    accent-color: var(--barbi-purple-mid);
+    cursor: pointer;
+}
+
+.auth-remember label {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    margin: 0;
+    cursor: pointer;
+}
+
+/* ── Bouton principal ── */
+.auth-btn {
+    width: 100%;
+    background: var(--barbi-purple) !important;
+    color: white !important;
+    border: none !important;
     border-radius: 8px !important;
     padding: 12px !important;
-    font-size: 14px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.1s ease;
+    letter-spacing: 0.2px;
 }
 
-.barbi-input:focus {
-    box-shadow: 0 0 0 0.25 rem rgba(74, 0, 78, 0.25) !important;
-    margin-bottom: 15px;
-    border-color: var(--barbi-purple) !important;
-}
-
-/* Bouton Violet BarbiLink */
-.btn-barbi {
-    background-color: var(--barbi-purple) !important;
-    border: none !important;
+.auth-btn:hover {
+    background: var(--barbi-purple-mid) !important;
+    transform: translateY(-1px);
     color: white !important;
-    font-weight: bold;
-    letter-spacing: 0.5px;
-    transition: transform 0.2s ease, background-color 0.2s ease;
 }
 
-.btn-barbi:hover {
-    background-color: #6a0070 !important;
-    transform: translateY(-2px);
+/* ── Ligne de bas (lien switch) ── */
+.auth-footer {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 0.875rem;
+    color: var(--text-muted);
 }
 
-/* Liens et texte cliquable */
+/* ── Liens violets ── */
 .barbi-link {
-    color: var(--barbi-purple);
+    color: var(--barbi-purple-mid);
+    font-weight: 600;
     text-decoration: none;
+    cursor: pointer;
 }
 
 .barbi-link:hover {
     text-decoration: underline;
 }
 
-.text-muted.small {
-    text-decoration: none;
-    color: #666 !important;
-}
-
-/* Ajustements pour Tablettes et Mobiles */
-@media (max-width: 576px) {
+/* ── Responsive ── */
+@media (max-width: 520px) {
     .auth-card {
-        padding: 25px 20px;
-        border-radius: 30px; /* Légèrement moins arrondi sur petit écran */
+        padding: 32px 24px 28px;
+        border-radius: 12px;
     }
 
-    .fw-bold {
-        font-size: 1.5rem;
+    .auth-logo {
+        width: 130px;
     }
-
-    .btn-barbi {
-        padding: 10px ;
-    }
-}
-
-/* Gestion du contenu spécifique au formulaire d'inscription (plus long) */
-.auth-card.tall {
-    margin-top: 20px;
-    margin-bottom: 20px;
 }

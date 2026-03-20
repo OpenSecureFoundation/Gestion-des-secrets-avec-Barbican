@@ -1,0 +1,59 @@
+{% extends "base_auth.html" %}
+
+{% load static %}
+
+{% block content %}
+<div id="auth-display" class="auth-page">
+  <div class="auth-card">
+
+    <img src="{% static 'img/logo.png' %}" alt="BarbiLink" class="auth-logo">
+    <h2 class="auth-title">Vérification de l'adresse mail</h2>
+    <p class="text-muted text-center small mb-4">
+      Un code à 6 chiffres a été envoyé à <strong>{{ user_email }}</strong>.<br>
+      Veuillez le saisir ci-dessous pour finaliser votre inscription.
+    </p>
+
+    {% if error %}
+      <div class="alert alert-danger py-2 px-3 mb-3" role="alert">
+        <i class="fas fa-exclamation-circle me-2"></i>{{ error }}
+      </div>
+    {% endif %}
+
+    <form hx-post="{% url 'accounts:verify_register' %}"
+          hx-target="#auth-display"
+          hx-push-url="true">
+      {% csrf_token %}
+
+      <div class="auth-field">
+        <label for="code">Code de vérification</label>
+        <input type="text"
+               id="code"
+               name="code"
+               class="form-control text-center"
+               placeholder="123456"
+               maxlength="6"
+               inputmode="numeric"
+               pattern="[0-9]{6}"
+               autocomplete="one-time-code"
+               autofocus
+               required
+               style="letter-spacing: 0.4em; font-size: 1.4rem; font-weight: 600;">
+      </div>
+
+      <button type="submit" class="btn auth-btn">
+        <i class="fas fa-check-circle me-2"></i>Valider
+      </button>
+    </form>
+
+    <p class="auth-footer">
+      <span class="barbi-link"
+            hx-get="{% url 'accounts:register' %}"
+            hx-push-url="true"
+            hx-target="#auth-display">
+        <i class="fas fa-arrow-left me-1"></i>Retour à l'inscription
+      </span>
+    </p>
+
+  </div>
+</div>
+{% endblock %}

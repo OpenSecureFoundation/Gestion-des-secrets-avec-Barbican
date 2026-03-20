@@ -1,0 +1,55 @@
+<div id="modifier-conteneur-panel" class="mt-4 mb-4 p-4 bg-white rounded shadow border-start border-4 border-purple">
+
+    <h5 class="fw-bold mb-4" style="color: #4a0e4e;">
+        <i class="fas fa-pen me-2"></i>Modifier — {{ conteneur.nom_conteneur }}
+    </h5>
+
+    {% if erreurs %}
+    <div class="alert alert-danger alert-dismissible fade show barbi-alert mb-3" role="alert">
+        <i class="fas fa-exclamation-circle me-2"></i>
+        <ul class="mb-0 mt-1">
+            {% for e in erreurs %}<li>{{ e }}</li>{% endfor %}
+        </ul>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endif %}
+
+    <form hx-post="{% url 'apps_manager:modifier_conteneur' %}"
+          hx-target="#modifier-conteneur-panel"
+          hx-swap="outerHTML">
+        {% csrf_token %}
+        <input type="hidden" name="conteneur_id" value="{{ conteneur.id }}">
+
+        <div class="mb-3">
+            <label class="form-label fw-semibold">Nom du secret</label>
+            <input type="text" name="nom_conteneur" class="form-control"
+                   value="{{ conteneur.nom_conteneur }}" required>
+            <small class="text-muted">
+                <i class="fas fa-info-circle me-1"></i>
+                Changer le nom supprime et recrée les secrets dans Barbican.
+            </small>
+        </div>
+
+        <div class="mb-4">
+            <label class="form-label fw-semibold">Durée de validité (jours)</label>
+            <input type="number" name="duree_validite" class="form-control"
+                   value="{{ conteneur.duree_validite|default:'' }}" min="1">
+        </div>
+
+        <div class="d-flex gap-2 justify-content-end">
+            <button type="submit"
+                    class="btn px-4 text-white fw-bold btn-it"
+                    style="background-color: #4a0e4e; border: none;">
+                <i class="fas fa-save me-1"></i><span class="bl">Enregistrer</span>
+            </button>
+            <button type="button"
+                    class="btn btn-outline-secondary"
+                    hx-get="{% url 'apps_manager:detail_app' %}?projet_id={{ projet.id_projet }}"
+                    hx-target="#main-display"
+                    hx-swap="innerHTML"
+                    hx-push-url="true">
+                Annuler
+            </button>
+        </div>
+    </form>
+</div>

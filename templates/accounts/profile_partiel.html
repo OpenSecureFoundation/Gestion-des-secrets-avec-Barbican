@@ -1,20 +1,39 @@
-<!-- accounts/profile_partiel.html -->
-<div class="container mt-4">
-  <h3 class="fw-bold mb-4 text-purple">Mon compte</h3>
-  
-  <div class="row">
-    <div class="col-lg-8 mx-auto">
-        
+<div class="container-fluid p-4 mb-5">
+
+  <div class="row g-4">
+
+    <!-- ── Colonne gauche : Profil + Supprimer ── -->
+    <div class="col-12 col-lg-4">
+
+      <div id="profil-section-wrapper">
+        {% include "accounts/section_profil.html" %}
+      </div>
+
+      <!-- Supprimer le compte -->
+      <div class="bg-white p-4 rounded-4 shadow-sm border border-danger border-opacity-25">
+        <h5 class="text-danger mb-1">Zone de danger</h5>
+        <p class="text-muted small mb-3">La suppression de votre compte est irréversible.</p>
+        <a href="{% url 'accounts:delete_user' %}"
+           class="btn btn-outline-danger btn-sm w-100"
+           onclick="return confirm('Supprimer définitivement votre compte et toutes vos données ?');">
+          <i class="fas fa-trash me-2"></i>Supprimer mon compte
+        </a>
+      </div>
+
+    </div>
+
+    <!-- ── Colonne droite : Identité + Mot de passe ── -->
+    <div class="col-12 col-lg-8 d-flex flex-column gap-4">
+
       <div id="identity-section">
         {% include "accounts/section_identite.html" %}
       </div>
 
-      <div class="my-5"></div>
-
       <div id="password-section">
         {% include "accounts/section_password.html" %}
       </div>
-      
+
     </div>
+
   </div>
 </div>

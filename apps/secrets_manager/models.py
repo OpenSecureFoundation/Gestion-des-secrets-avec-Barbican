@@ -14,7 +14,7 @@ class ConteneurSecret(models.Model):
     projet = models.ForeignKey(Projet, on_delete=models.CASCADE, related_name='conteneur')
     nom_conteneur = models.CharField(max_length=255)
     ref_old_conteneur = models.CharField(max_length=255, unique=True, null=True, help_text="UUID ou URI Barbican")
-    ref_new_conteneur = models.CharField(max_length=255, unique=True, blank=True, help_text="UUID ou URI Barbican")
+    ref_new_conteneur = models.CharField(max_length=255, unique=True, null=True, blank=True, help_text="UUID ou URI Barbican")
     type_conteneur = models.CharField(max_length=100) #generic=>cle API simple, RSA=>paire de cles et certificat
     
     # --- Logique de Dates ---
@@ -22,7 +22,8 @@ class ConteneurSecret(models.Model):
     date_expiration = models.DateTimeField()
     
     # --- Champs de Configuration du renouvellement ---
-    frequence_rotation = models.IntegerField(default=30, help_text="Fréquence en jours")
+    version = models.IntegerField(default=1, help_text="Version du conteneur, incrémentée à chaque renouvellement")
+    duree_validite = models.IntegerField(null=True, blank=True, help_text="Durée de validité en jours")
     delai_anticipation = models.IntegerField(default=7, help_text="Alerte X jours avant")
 
     # --- Champs spécifiques Certificats ---
@@ -41,6 +42,7 @@ class Secret(models.Model):
     nom_secret = models.CharField(max_length=255)
     type_secret = models.CharField(max_length=100)  # symmetric=>cle API simple, asymmetric=>cle privee/publique, certificat=>certificat (partie publique signee)
     ref_secret = models.CharField(max_length=255, unique=True, help_text="UUID ou URI Barbican")
+    version = models.IntegerField(default=1, help_text="Version du secret, correspond à celle du conteneur")
 
     def __str__(self):
         return f"{self.nom_secret} ({self.type_secret})"

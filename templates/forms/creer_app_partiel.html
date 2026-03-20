@@ -1,39 +1,60 @@
-<h5 class="text-center fw-bold mb-4" style="color: #4a0e4e;">
-    Nouvelle application
-</h5>
+<div class="container-fluid p-4">
 
-{% if error %}
-    <div class="alert alert-danger">{{ error }}</div>
-{% endif %}
+  <!-- ── En-tête de page ── -->
+  <div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+      <h3 class="fw-bold mb-1" style="color: #4a0e4e;">Nouvelle application</h3>
+      <p class="text-muted small mb-0">Créez une application pour regrouper et gérer vos secrets.</p>
+    </div>
+    <button type="button" class="btn btn-outline-secondary btn-sm px-3"
+            onclick="window.history.back()">
+      <i class="fas fa-arrow-left me-1"></i> Retour
+    </button>
+  </div>
 
-<form hx-post="{% url 'apps_manager:creer_app' %}" hx-target="#main-display">
+  <!-- ── Message d'erreur ── -->
+  {% if error %}
+    <div class="alert alert-danger alert-dismissible fade show barbi-alert mb-4" role="alert">
+      <i class="fas fa-exclamation-circle me-2"></i>{{ error }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+  {% endif %}
+
+  <!-- ── Formulaire ── -->
+  <form hx-post="{% url 'apps_manager:creer_app' %}" hx-target="#main-display" hx-push-url="true">
     {% csrf_token %}
-    
-    <div class="mb-4">
-        <label class="form-label fw-bold mb-2">
-            Nom de l’application :
-        </label>
-        <input type="text" name="name" class="form-control barbi-input" 
-                placeholder="Ex: MonAppService" value="{{ form_data.name}}" required>
-    </div>
 
-    <div class="mb-4">
-        <label class="form-label fw-bold mb-2">
-            Description :
-        </label>
-        <textarea name="description" class="form-control barbi-input" 
-                    rows="4" placeholder="À quoi sert cette application ?" value="{{ form_data.description}}" required></textarea>
-    </div>
+    <div class="bg-white rounded shadow border-start border-4 border-purple p-4">
 
-    <div class="text-center">
-        <a href="{% url 'apps_manager:list_app' %}" style="text-decoration: none; color: inherit; cursor: default;">
-            <button type="submit" class="btn text-white px-5 py-2 fw-bold" 
-                style="background-color: #4a0e4e; border-radius: 25px;">
-                confirmer
-            </button>
-        </a>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Nom de l'application</label>
+        <input type="text" name="name" class="form-control"
+               placeholder="Ex : MonAppService" value="{{ form_data.name }}" required>
+      </div>
+
+      <div class="mb-4">
+        <label class="form-label fw-semibold">Description</label>
+        <textarea name="description" class="form-control"
+                  rows="3" placeholder="À quoi sert cette application ?">{{ form_data.description }}</textarea>
+      </div>
+
+      <div class="d-flex gap-2 justify-content-end pt-3" style="border-top: 1px solid #f0e6f6;">
+        <button type="submit"
+                class="btn px-4 text-white fw-bold btn-it"
+                style="background-color: #4a0e4e; border: none;">
+          <i class="fas fa-plus me-1"></i><span class="bl">Ajouter</span>
+        </button>
+        <button type="button"
+                class="btn btn-outline-secondary"
+                hx-get="{% url 'apps_manager:list_app' %}"
+                hx-target="#main-display"
+                hx-swap="innerHTML"
+                hx-push-url="true">
+          Annuler
+        </button>
+      </div>
+
     </div>
-    <div class="text-center mt-3">
-        <a href="{% url 'apps_manager:list_app' %}" class="text-muted small">Annuler</a>
-    </div>
-</form>
+  </form>
+
+</div>

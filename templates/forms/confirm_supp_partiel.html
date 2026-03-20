@@ -1,26 +1,36 @@
-
 {% if error %}
-    <div class="alert alert-danger">{{ error }}</div>
+<div class="alert alert-danger py-2 px-3 mb-3 small" role="alert">
+  <i class="fas fa-exclamation-circle me-1"></i>{{ error }}
+</div>
 {% endif %}
-      
-<form hx-post="{% url 'accounts:delete_user' %}">
-    {% csrf_token %}
-    <div class="mb-4 position-relative">
-        <input type="password" name="password" id="confirm_pass" 
-                class="form-control text-center" 
-                style="border: 2px solid #8b008b; border-radius: 10px; height: 50px;"
-                required>
-    </div>
-    
-    <div class="text-center">
-        <button type="submit" class="btn text-white px-5 py-2 fw-bold" 
-                style="background-color: #4a0e4e; border-radius: 25px;">
-            <a href="{% url 'accounts:login' %}" style="text-decoration: none; color: inherit; cursor: default;">
-                confirmer
-            </a>
-        </button>
-    </div>
-    <div class="text-center mt-3">
-        <a href="{% url 'accounts:profile' %}" class="text-muted small">Annuler</a>
-    </div>
+
+<form hx-post="{% url 'accounts:delete_user' %}" hx-target="#main-display">
+  {% csrf_token %}
+
+  <div style="margin-bottom:1.5rem;">
+    <input type="password"
+           name="password"
+           class="form-control"
+           placeholder="Votre mot de passe"
+           style="border:1.5px solid #d1b3d8; border-radius:8px; padding:0.6rem 1rem; text-align:center; font-size:0.95rem;"
+           required
+           autofocus>
+  </div>
+
+  <div style="display:flex; justify-content:flex-end; align-items:center; gap:1rem; flex-wrap:wrap;">
+    <button type="submit"
+            style="background:#dc3545; color:#fff; font-weight:700; font-size:0.82rem; letter-spacing:0.05em; text-transform:uppercase; padding:0.55rem 1.6rem; border-radius:8px; border:none; cursor:pointer; transition:background .2s;"
+            onmouseenter="this.style.background='#b02a37'"
+            onmouseleave="this.style.background='#dc3545'">
+      Confirmer la suppression
+    </button>
+    <a hx-get="{% url 'accounts:profile' %}"
+       hx-target="#main-display"
+       hx-push-url="true"
+       style="color:#6b7280; font-weight:600; font-size:0.88rem; text-decoration:none; cursor:pointer; padding:0.55rem 0.5rem;"
+       onmouseenter="this.style.color='#374151'"
+       onmouseleave="this.style.color='#6b7280'">
+      Annuler
+    </a>
+  </div>
 </form>

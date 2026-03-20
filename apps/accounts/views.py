@@ -1,13 +1,44 @@
-from pyexpat.errors import messages
+import logging
+import random
+import string
+import time
 
+from django.core.mail import send_mail
 from django.http import HttpResponse
 from django.urls import reverse
 import requests
 from django.shortcuts import redirect, render
-from django.conf import settings 
+from django.conf import settings
 from django.contrib.auth import login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from .models import Utilisateur
+from api_manager.notifications import notifier_inscription
+
+
+def _generer_code_verif():
+    """Génère un code numérique à 6 chiffres."""
+    return ''.join(random.choices(string.digits, k=6))
+
+
+def _envoyer_code_verif(user, code, action):
+    """Envoie le code de vérification par e-mail."""
+    action_txt = "modification de votre identité" if action == "identite" else "modification de votre mot de passe"
+    send_mail(
+        subject=f"BarbiLink — Code de vérification : {code}",
+        message=(
+            f"Bonjour {user.first_name or user.username},\n\n"
+            f"Un code de vérification est requis pour la {action_txt} :\n\n"
+            f"    {code}\n\n"
+            f"Ce code est valable 10 minutes.\n"
+            f"Si vous n'êtes pas à l'origine de cette demande, ignorez cet e-mail.\n\n"
+            "— L'équipe BarbiLink 💜"
+        ),
+        from_email=settings.DEFAULT_FROM_EMAIL,
+        recipient_list=[user.email],
+        fail_silently=True,
+    )
+
+logger = logging.getLogger(__name__)
 
 ################################### FONCTIONS NECESSAIRES POUR L'AUTHENTIFICATION ################################################
 
@@ -28,58 +59,54 @@ def _generer_requete_auth(pseudo, mdp, methode="password", domaine="Default", sc
             }
         }
     }
-    # Si un scope est fourni, on l'ajoute au dictionnaire
     if scope:
         auth_data["auth"]["scope"] = scope
-    
-    headers_auth = {"Content-Type": "application/json"}
 
+    headers_auth = {"Content-Type": "application/json"}
     return url_auth, auth_data, headers_auth
+
 
 # Fonction d'authentification pour simple vérification d'identité
 def token_verification(pseudo, mdp):
     url, data, headers = _generer_requete_auth(pseudo=pseudo, mdp=mdp)
-    
     response = requests.post(url, json=data, headers=headers)
-    
     if response.status_code == 201:
         return response.headers.get('X-Subject-Token')
     return None
 
-# Fonction pour generer un nouveau token scopé sur un projet spécifique en utilisant un token existant
+
+# Fonction pour generer un nouveau token scopé sur un projet spécifique
 def token_keystone_scope(token_actuel, project_id):
     url = f"{settings.KEYSTONE_URL}/auth/tokens"
-    print(token_actuel)
+    logger.debug("token_keystone_scope: scoping sur projet %s", project_id)
     payload = {
         "auth": {
             "identity": {
                 "methods": ["token"],
-                "token": {
-                    "id": token_actuel  
-                }
+                "token": {"id": token_actuel}
             },
             "scope": {
-                "project": {
-                    "id": project_id  
-                }
+                "project": {"id": project_id}
             }
         }
     }
 
     try:
         response = requests.post(url, json=payload)
-        
         if response.status_code == 201:
             nouveau_token = response.headers.get('X-Subject-Token')
-            print("Nouveau token généré avec succès via l'ancien token.")
+            logger.debug("token_keystone_scope: nouveau token généré pour projet %s", project_id)
             return nouveau_token
         else:
-            print(f"Erreur de re-scoping : {response.status_code} - {response.text}")
+            logger.error(
+                "token_keystone_scope: re-scoping erreur %s — %s",
+                response.status_code, response.text,
+            )
             return None
-
     except requests.exceptions.RequestException as e:
-        print(f"Erreur réseau : {str(e)}")
+        logger.error("token_keystone_scope: erreur réseau: %s", e)
         return None
+
 
 # Fonction d'authentification pour attribution de permission sur un projet
 def token_acces(pseudo, mdp, projet, domaine="Default", methode="password"):
@@ -90,57 +117,56 @@ def token_acces(pseudo, mdp, projet, domaine="Default", methode="password"):
         }
     }
     url, data, headers = _generer_requete_auth(pseudo, mdp, methode, domaine, scope=scope)
-    
     response = requests.post(url, json=data, headers=headers)
-    
     if response.status_code == 201:
         token = response.headers.get('X-Subject-Token')
         data = response.json()
         admin_id = data['token']['user']['id']
-        return token, admin_id 
+        return token, admin_id
     return None
+
 
 # Fonction de recuperation du token de l'administrateur de keystone
 def get_admin_token():
-    pseudo = settings.KEYSTONE_ADMIN_USERNAME
+    pseudo  = settings.KEYSTONE_ADMIN_USERNAME
     domaine = settings.KEYSTONE_ADMIN_DOMAIN
-    mdp = settings.KEYSTONE_ADMIN_PASSWORD
-    projet = settings.KEYSTONE_ADMIN_PROJECT
-       
+    mdp     = settings.KEYSTONE_ADMIN_PASSWORD
+    projet  = settings.KEYSTONE_ADMIN_PROJECT
     try:
         var = token_acces(pseudo=pseudo, mdp=mdp, projet=projet, domaine=domaine)
-        return var[0]    ####### Amelioration possible au niveau de la methode. Faut il prendre en compte d'autres methodes? Si oui comment?
+        return var[0]
     except Exception as e:
-        print(f"Erreur de recuperation du token administrateur: {e}. Verifiez vos parametres administrateurs")
+        logger.error("get_admin_token: impossible de récupérer le token admin: %s", e)
         return None
-    
-# Fonction de recuperation de l'id de l'utlisateur de keystone
+
+
+# Fonction de recuperation de l'id de l'utilisateur keystone
 def get_user_keystone_id():
-    pseudo = settings.KEYSTONE_ADMIN_USERNAME
+    pseudo  = settings.KEYSTONE_ADMIN_USERNAME
     domaine = settings.KEYSTONE_ADMIN_DOMAIN
-    mdp = settings.KEYSTONE_ADMIN_PASSWORD
-    projet = settings.KEYSTONE_ADMIN_PROJECT
-       
+    mdp     = settings.KEYSTONE_ADMIN_PASSWORD
+    projet  = settings.KEYSTONE_ADMIN_PROJECT
     try:
         var = token_acces(pseudo=pseudo, mdp=mdp, projet=projet, domaine=domaine)
-        return var[1]    ####### Amelioration possible au niveau de la methode. Faut il prendre en compte d'autres methodes? Si oui comment?
+        return var[1]
     except Exception as e:
-        print(f"Erreur de recuperation de l'id administrateur: {e}. Verifiez vos parametres administrateurs")
+        logger.error("get_user_keystone_id: impossible de récupérer l'id admin: %s", e)
         return None
+
 
 # Fonction de recuperation de l'id de l'utilisateur barbican
 def get_user_barbican_id():
-    pseudo = settings.BARBICAN_USERNAME
+    pseudo  = settings.BARBICAN_USERNAME
     domaine = settings.KEYSTONE_ADMIN_DOMAIN
-    mdp = settings.BARBICAN_PASSWORD
-    projet = settings.BARBICAN_PROJECT
-       
+    mdp     = settings.BARBICAN_PASSWORD
+    projet  = settings.BARBICAN_PROJECT
     try:
         var = token_acces(pseudo=pseudo, mdp=mdp, projet=projet, domaine=domaine)
-        return var[1]    ####### Amelioration possible au niveau de la methode. Faut il prendre en compte d'autres methodes? Si oui comment?
+        return var[1]
     except Exception as e:
-        print(f"Erreur de recuperation de l'id de barbican: {e}. Verifiez vos parametres barbican")
+        logger.error("get_user_barbican_id: impossible de récupérer l'id barbican: %s", e)
         return None
+
 ###############################################################################################################################
 
 
@@ -150,115 +176,189 @@ def get_user_barbican_id():
 # Fonction pour la creation d'un utilisateur dans KEYSTONE
 def creer_utilisateur_keystone(pseudonyme, password, email):
     token = get_admin_token()
-    
+
     if not token:
-        print("Impossible de se connecter au serveur Keystone. Verifiez que votre serveur Keystone est actif.")
+        logger.error("creer_utilisateur_keystone: token admin indisponible — Keystone injoignable ?")
         return None
 
-    # On recupere l'URL du serveur KEYSTONE pour la création d'utilisateur
     url_users = f"{settings.KEYSTONE_URL}/users"
-
     headers = {
         "X-Auth-Token": token,
         "Content-Type": "application/json"
     }
-
     data = {
         "user": {
-            "name": pseudonyme, 
-            "password": password, 
-            "email": email, 
+            "name": pseudonyme,
+            "password": password,
+            "email": email,
             "enabled": True
         }
     }
 
     try:
         response = requests.post(url_users, headers=headers, json=data)
-        
         if response.status_code == 201:
-            # Succès : On récupère l'ID généré par Keystone 
-            return response.json()['user']['id'] 
+            return response.json()['user']['id']
         else:
-            print(f"Erreur cote serveur Keystone: {response.status_code} - {response.text}")
+            logger.error(
+                "creer_utilisateur_keystone: erreur Keystone %s — %s",
+                response.status_code, response.text,
+            )
             return None
     except Exception as e:
-        print(f"Erreur de connexion au serveur Keystone: {e}. Verifiez que votre serveur Keystone est actif.")
+        logger.error("creer_utilisateur_keystone: erreur de connexion: %s", e)
         return None
+
 
 # Fonction pour stocker un nouvel utilisateur dans la base de donnees locale
 def register_view(request):
     if request.method == "POST":
-        # Récupération des données du formulaire 
-        prenom = request.POST.get('first_name')
-        nom = request.POST.get('last_name')
-        pseudo = request.POST.get('username') # Utilisé comme pseudonyme
-        email_saisi = request.POST.get('email')
-        mdp = request.POST.get('password') 
-        confirm_mdp = request.POST.get('confirm_password')       
+        prenom        = request.POST.get('first_name', '').strip()
+        nom           = request.POST.get('last_name', '').strip()
+        pseudo        = request.POST.get('username', '').strip()
+        email_saisi   = request.POST.get('email', '').strip()
+        mdp           = request.POST.get('password', '')
+        confirm_mdp   = request.POST.get('confirm_password', '')
 
-        # --- VÉRIFICATION DES MOTS DE PASSE ---
         if mdp != confirm_mdp:
             return render(request, 'forms/register.html', {
-                "error": "Mots de passe differents",
-                "form_data": request.POST # Pour ne pas vider le formulaire
-            })
-        # ---------------------------------------
-
-        # Reucperation de l'id_keystone genere.
-        id_ks = creer_utilisateur_keystone(pseudo, mdp, email_saisi)
-
-        if id_ks:
-            try:
-                # Insertion dans la base de donnees locale
-                Utilisateur.objects.create_user(
-                    username=pseudo,    
-                    first_name=prenom,  
-                    last_name=nom,      
-                    email=email_saisi,  
-                    password=mdp,       
-                    id_keystone=id_ks,  
-                    role="member"       
-                )
-                response = HttpResponse()
-                response['HX-Redirect'] = reverse('accounts:login')  
-                return response
-            except Exception as e:
-                print(f"Erreur d'enregistrement dans la base de données locale : {e}")
-                return render(request, 'forms/register.html', {
-                    "error": "Données invalides",
-                    "form_data": request.POST
-                })
-        else:
-            return render(request, 'forms/register.html', {
-                "error": "Données invalides",
+                "error": "Les mots de passe ne correspondent pas.",
                 "form_data": request.POST
             })
 
+        if Utilisateur.objects.filter(username=pseudo).exists():
+            return render(request, 'forms/register.html', {
+                "error": "Ce pseudonyme est déjà utilisé.",
+                "form_data": request.POST
+            })
+
+        if Utilisateur.objects.filter(email=email_saisi).exists():
+            return render(request, 'forms/register.html', {
+                "error": "Cette adresse mail est déjà associée à un compte.",
+                "form_data": request.POST
+            })
+
+        # Génération et envoi du code de vérification
+        code = _generer_code_verif()
+        request.session['verif_code_register']    = code
+        request.session['verif_expires_register'] = time.time() + 600
+        request.session['pending_register'] = {
+            'first_name': prenom,
+            'last_name':  nom,
+            'username':   pseudo,
+            'email':      email_saisi,
+            'password':   mdp,
+        }
+
+        send_mail(
+            subject=f"BarbiLink — Code de vérification : {code}",
+            message=(
+                f"Bonjour {prenom},\n\n"
+                f"Voici votre code de vérification pour créer votre compte BarbiLink :\n\n"
+                f"    {code}\n\n"
+                f"Ce code est valable 10 minutes.\n\n"
+                f"Si vous n'avez pas demandé à créer un compte, ignorez cet e-mail.\n\n"
+                f"L'équipe BarbiLink"
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email_saisi],
+            fail_silently=True,
+        )
+        logger.info("register_view: code de vérification envoyé à %s", email_saisi)
+
+        return render(request, 'forms/register_verify.html', {
+            'user_email': email_saisi,
+        })
+
     return render(request, 'forms/register.html')
+
+
+def verify_register_view(request):
+    if request.method != "POST":
+        return redirect('accounts:register')
+
+    code_saisi  = request.POST.get('verif_code', '').strip()
+    code_attendu = request.session.get('verif_code_register')
+    expires      = request.session.get('verif_expires_register', 0)
+    pending      = request.session.get('pending_register')
+
+    def _erreur(msg):
+        return render(request, 'forms/register_verify.html', {
+            'user_email': pending.get('email', '') if pending else '',
+            'error': msg,
+        })
+
+    if not pending or not code_attendu:
+        return redirect('accounts:register')
+
+    if time.time() > expires:
+        for k in ('verif_code_register', 'verif_expires_register', 'pending_register'):
+            request.session.pop(k, None)
+        return render(request, 'forms/register.html', {
+            'error': "Le code a expiré. Veuillez recommencer.",
+        })
+
+    if code_saisi != code_attendu:
+        return _erreur("Code incorrect. Vérifiez votre e-mail et réessayez.")
+
+    # Code valide — création du compte
+    prenom      = pending['first_name']
+    nom         = pending['last_name']
+    pseudo      = pending['username']
+    email_saisi = pending['email']
+    mdp         = pending['password']
+
+    id_ks = creer_utilisateur_keystone(pseudo, mdp, email_saisi)
+
+    if not id_ks:
+        for k in ('verif_code_register', 'verif_expires_register', 'pending_register'):
+            request.session.pop(k, None)
+        return render(request, 'forms/register.html', {
+            'error': "Impossible de créer le compte. Veuillez réessayer.",
+        })
+
+    try:
+        nouvel_user = Utilisateur.objects.create_user(
+            username=pseudo,
+            first_name=prenom,
+            last_name=nom,
+            email=email_saisi,
+            password=mdp,
+            id_keystone=id_ks,
+            role="creator"
+        )
+        notifier_inscription(nouvel_user)
+        logger.info("verify_register_view: compte créé pour %s", pseudo)
+    except Exception as e:
+        logger.error("verify_register_view: erreur création compte %s : %s", pseudo, e)
+        return render(request, 'forms/register.html', {
+            'error': "Erreur lors de la création du compte. Veuillez réessayer.",
+        })
+    finally:
+        for k in ('verif_code_register', 'verif_expires_register', 'pending_register'):
+            request.session.pop(k, None)
+
+    response = HttpResponse()
+    response['HX-Redirect'] = reverse('accounts:login')
+    return response
+
 
 # Fonction pour la connexion dans notre application
 def login_view(request):
     if request.method == "POST":
         pseudo = request.POST.get('username')
-        mdp = request.POST.get('password')
-        
-        # Validation Keystone
+        mdp    = request.POST.get('password')
+
         keystone_token = token_verification(pseudo, mdp)
-        
+
         if keystone_token:
-            # Récupération de l'utilisateur dans la DB locale
             try:
                 user = Utilisateur.objects.get(username=pseudo)
-                
-                # Connection de l'utilisateur 
                 login(request, user)
-                # STOCKAGE DU TOKEN DANS LA SESSION
                 request.session['keystone_token'] = keystone_token
-                # Redirection vers la page principale#############################################################################################33
                 response = HttpResponse()
-                response['HX-Redirect'] = reverse('accounts:profile')  
+                response['HX-Redirect'] = reverse('apps_manager:dashboard')
                 return response
-                
             except Utilisateur.DoesNotExist:
                 return render(request, 'forms/login.html', {
                     "error": "Identifiants invalides.",
@@ -268,7 +368,7 @@ def login_view(request):
             return render(request, 'forms/login.html', {
                 "error": "Identifiants invalides.",
                 "form_data": request.POST
-                })
+            })
 
     return render(request, 'forms/login.html')
 
@@ -276,212 +376,344 @@ def login_view(request):
 # Fonction pour se deconnecter de son compte utilisateur
 def logout_view(request):
     logout(request)
-    request.session.flush()
-    messages.info(request, "Vous avez été déconnecté.")
     return redirect('accounts:login')
+
 
 # Fonction pour supprimer un utilisateur dans keystone
 def supprimer_utilisateur_keystone(admin_token, user_keystone_id):
     url = f"{settings.KEYSTONE_URL}/users/{user_keystone_id}"
-    
     headers = {
         "X-Auth-Token": admin_token,
         "Content-Type": "application/json"
     }
-    
     try:
         response = requests.delete(url, headers=headers)
-      
-        # Keystone renvoie 204 No Content en cas de succès
         if response.status_code == 204:
-            print(f"Utilisateur supprimé avec succès: {response.status_code} - {response.text}")
+            logger.info("supprimer_utilisateur_keystone: utilisateur %s supprimé", user_keystone_id)
             return True
         else:
-            print(f"Erreur cote serveur Keystone: {response.status_code} - {response.text}")
+            logger.error(
+                "supprimer_utilisateur_keystone: erreur Keystone %s — %s",
+                response.status_code, response.text,
+            )
             return False
     except requests.exceptions.RequestException as e:
-        print(f"Erreur de connexion : {str(e)}")
+        logger.error("supprimer_utilisateur_keystone: erreur de connexion: %s", e)
         return False
-    
+
+
 # Fonction pour supprimer son compte utilisateur de BarbiLink
 @login_required
 def supprimer_compte_view(request):
     if request.method == 'POST':
         password = request.POST.get('password')
-        user = request.user
-              
-        # Vérification du mot de passe pour la sécurité
+        user     = request.user
+
         if not user.check_password(password):
             return render(request, 'forms/confirm_supp_partiel.html', {
-                    "error": "Mot de passe incorrect.",
-                    "form_data": request.POST
-                })
+                "error": "Mot de passe incorrect.",
+                "form_data": request.POST
+            })
 
         try:
-            # Recuperation du token de l'administrateur
-            admin_token = get_admin_token()
-
-             # Recuperation de l'id keystone de l'utilisateur
-            id_ks_user = user.id_keystone
-
-            # Suppression dans Keystone d'abord
+            admin_token      = get_admin_token()
+            id_ks_user       = user.id_keystone
             keystone_deleted = supprimer_utilisateur_keystone(admin_token, id_ks_user)
-            
+
             if keystone_deleted:
-                # Suppression dans la base de donnees locale et déconnexion
                 user.delete()
-                print("Compte et accès Keystone supprimés avec succès.")
+                logger.info("supprimer_compte_view: compte et accès Keystone supprimés")
                 logout(request)
                 response = HttpResponse()
-                response['HX-Redirect'] = reverse('accounts:login')  
+                response['HX-Redirect'] = reverse('accounts:login')
                 return response
             else:
-                print("Erreur lors de la suppression sur le serveur d'identité.")
+                logger.error("supprimer_compte_view: échec de la suppression Keystone")
                 return render(request, 'forms/confirm_supp_partiel.html', {
                     "error": "Veuillez reessayer plus tard !",
                     "form_data": request.POST
                 })
-                
         except Exception as e:
-            print(f"Une erreur critique est survenue : {str(e)}")
+            logger.critical("supprimer_compte_view: erreur critique: %s", e)
             return render(request, 'forms/confirm_supp_partiel.html', {
                 "error": "Veuillez reessayer plus tard !",
                 "form_data": request.POST
             })
+
     return render(request, 'forms/confirm_suppression.html')
 
+
 # Fonction pour mettre à jour un utilisateur dans Keystone
-def modifier_utilisateur_keystone(request, admin_token, user_id, name=None, password=None, email=None):
+def modifier_utilisateur_keystone(admin_token, user_id, name=None, password=None, email=None):
     url = f"{settings.KEYSTONE_URL}/users/{user_id}"
     headers = {
         "X-Auth-Token": admin_token,
         "Content-Type": "application/json"
     }
-    
-    # Construction du corps de la requête (payload)
-    # On ne met que les champs qui ne sont pas None
+
     user_data = {}
-    if name: user_data['name'] = name
+    if name:     user_data['name']     = name
     if password: user_data['password'] = password
-    if email: user_data['email'] = email
-    
+    if email:    user_data['email']    = email
+
     payload = {"user": user_data}
-    print(payload) ##################
+    logger.debug("modifier_utilisateur_keystone: payload=%s", payload)
+
     try:
         response = requests.patch(url, json=payload, headers=headers)
-        
         if response.status_code == 200:
             return True
         else:
-            print(f"Erreur Keystone ({response.status_code}): {response.text}")
+            logger.error(
+                "modifier_utilisateur_keystone: erreur Keystone %s — %s",
+                response.status_code, response.text,
+            )
             return False
-            
     except requests.exceptions.RequestException as e:
-        print(f"Erreur de connexion à Keystone: {e}")
+        logger.error("modifier_utilisateur_keystone: erreur de connexion: %s", e)
         return False
-    
-# Fonction pour modifier l'identite de l'utilisateur
+
+
+# Fonction pour modifier l'identite de l'utilisateur (étape 1 : envoi du code)
 @login_required
 def change_identity_view(request):
     if request.method == 'POST':
         user = request.user
-        
-        # Récupération des valeurs postées
-        first_name = request.POST.get('first_name')
-        last_name = request.POST.get('last_name')
-        username = request.POST.get('username')
-        email = request.POST.get('email')
+        code    = _generer_code_verif()
+        expires = time.time() + 600  # 10 minutes
 
-        admin_token = get_admin_token()
-        
-        # Recuperation des donnees actuelles de l'utilisateur
-        user_id = user.id_keystone       
+        request.session['verif_code_identite']    = code
+        request.session['verif_expires_identite'] = expires
+        request.session['pending_identite'] = {
+            'first_name': request.POST.get('first_name', '').strip(),
+            'last_name':  request.POST.get('last_name',  '').strip(),
+            'username':   request.POST.get('username',   '').strip(),
+            'email':      request.POST.get('email',      '').strip(),
+        }
 
-        # Préparation des données pour Keystone (uniquement ce qui change)
-        if username and username != user.username :
-            success1 = modifier_utilisateur_keystone(request, admin_token, user_id, name=username)
-            if not success1:
-                    print(f"Erreur : échec de la mise à jour Keystone.")
-                    return render(request, 'accounts/profile.html', {
-                        "error_message": "Veuillez reessayer plus tard !",
-                        "form_data": request.POST
-                    })
-        if email and email != user.email:
-            success2 = modifier_utilisateur_keystone(request, admin_token, user_id, email=email)
-            if not success2:
-                    print(f"Erreur : échec de la mise à jour Keystone.")
-                    return render(request, 'accounts/profile.html', {
-                        "error_message": "Veuillez reessayer plus tard !",
-                        "form_data": request.POST
-                    })
+        _envoyer_code_verif(user, code, 'identite')
+        logger.info("change_identity_view: code de vérification envoyé à %s", user.email)
 
-        # Mise à jour de l'utilisateur Django
-        if first_name: user.first_name = first_name
-        if last_name: user.last_name = last_name
-        if username: user.username = username
-        if email: user.email = email
-        
-        user.save()
-        return render(request, 'accounts/section_identite.html', {
-            'user': user, 
-            'success_message': "Identité modifiée avec succès !"
+        return render(request, 'accounts/section_verify_code.html', {
+            'user_email':  user.email,
+            'verify_url':  reverse('accounts:verify_identite'),
+            'cancel_url':  reverse('accounts:change_identite'),
+            'section_id':  'profile-section',
+        })
+
+    return render(request, 'accounts/section_identite.html', {'user': request.user})
+
+
+# Fonction pour vérifier le code et appliquer les changements d'identité (étape 2)
+@login_required
+def verify_identity_view(request):
+    if request.method == 'POST':
+        user       = request.user
+        code_saisi = request.POST.get('verif_code', '').strip()
+        code_stock = request.session.get('verif_code_identite')
+        expires    = request.session.get('verif_expires_identite', 0)
+        pending    = request.session.get('pending_identite', {})
+
+        ctx_erreur = {
+            'verify_url': reverse('accounts:verify_identite'),
+            'cancel_url': reverse('accounts:change_identite'),
+            'section_id': 'profile-section',
+            'user_email': user.email,
+        }
+
+        if not code_stock:
+            return render(request, 'accounts/section_verify_code.html', {
+                **ctx_erreur, 'error': 'Session expirée. Veuillez recommencer.'
             })
 
-    return render(request, 'accounts/profile.html')
+        if time.time() > expires:
+            for k in ('verif_code_identite', 'verif_expires_identite', 'pending_identite'):
+                request.session.pop(k, None)
+            return render(request, 'accounts/section_verify_code.html', {
+                **ctx_erreur, 'error': 'Code expiré (10 min). Veuillez recommencer.'
+            })
 
-# Fonction pour modifier le mot de passe
+        if code_saisi != code_stock:
+            return render(request, 'accounts/section_verify_code.html', {
+                **ctx_erreur, 'error': 'Code incorrect. Vérifiez votre boîte mail.'
+            })
+
+        # Code valide — appliquer les changements
+        first_name = pending.get('first_name')
+        last_name  = pending.get('last_name')
+        username   = pending.get('username')
+        email      = pending.get('email')
+        admin_token = get_admin_token()
+        user_id     = user.id_keystone
+
+        if username and username != user.username:
+            if not modifier_utilisateur_keystone(admin_token, user_id, name=username):
+                logger.error("verify_identity_view: échec mise à jour username Keystone")
+                return render(request, 'accounts/section_identite.html', {
+                    'user': user, 'error_message': "Veuillez réessayer plus tard !"
+                })
+
+        if email and email != user.email:
+            if not modifier_utilisateur_keystone(admin_token, user_id, email=email):
+                logger.error("verify_identity_view: échec mise à jour email Keystone")
+                return render(request, 'accounts/section_identite.html', {
+                    'user': user, 'error_message': "Veuillez réessayer plus tard !"
+                })
+
+        if first_name: user.first_name = first_name
+        if last_name:  user.last_name  = last_name
+        if username:   user.username   = username
+        if email:      user.email      = email
+        user.save()
+
+        for k in ('verif_code_identite', 'verif_expires_identite', 'pending_identite'):
+            request.session.pop(k, None)
+
+        logger.info("verify_identity_view: identité modifiée pour %s", user.username)
+        return render(request, 'accounts/section_identite.html', {
+            'user': user,
+            'success_message': "Identité modifiée avec succès !",
+        })
+
+    return redirect('accounts:profile')
+
+
+# Fonction pour modifier le mot de passe (étape 1 : validation + envoi du code)
 @login_required
 def change_password_view(request):
     if request.method == 'POST':
-        user = request.user
-        old_pass = request.POST.get('old_password')
-        new_pass = request.POST.get('new_password')
+        user      = request.user
+        old_pass  = request.POST.get('old_password')
+        new_pass  = request.POST.get('new_password')
         conf_pass = request.POST.get('confirm_password')
 
-        # Vérification de l'ancien mot de passe
         if not user.check_password(old_pass):
             return render(request, 'accounts/section_password.html', {
                 'error_message': "Ancien mot de passe incorrect.",
-                "form_data": request.POST
-                })
-        
-        # Vérification de correspondance
+                'form_data': request.POST,
+            })
+
         if not new_pass or new_pass != conf_pass:
             return render(request, 'accounts/section_password.html', {
                 'error_message': "Les nouveaux mots de passe ne correspondent pas.",
-                "form_data": request.POST
-                })
+                'form_data': request.POST,
+            })
 
-        # Synchronisation Keystone
+        code    = _generer_code_verif()
+        expires = time.time() + 600  # 10 minutes
+
+        request.session['verif_code_password']    = code
+        request.session['verif_expires_password'] = expires
+        request.session['pending_password']       = new_pass
+
+        _envoyer_code_verif(user, code, 'password')
+        logger.info("change_password_view: code de vérification envoyé à %s", user.email)
+
+        return render(request, 'accounts/section_verify_code.html', {
+            'user_email': user.email,
+            'verify_url': reverse('accounts:verify_password'),
+            'cancel_url': reverse('accounts:change_password'),
+            'section_id': 'password-section',
+        })
+
+    return render(request, 'accounts/section_password.html', {'user': request.user})
+
+
+# Fonction pour vérifier le code et appliquer le nouveau mot de passe (étape 2)
+@login_required
+def verify_password_view(request):
+    if request.method == 'POST':
+        user       = request.user
+        code_saisi = request.POST.get('verif_code', '').strip()
+        code_stock = request.session.get('verif_code_password')
+        expires    = request.session.get('verif_expires_password', 0)
+        new_pass   = request.session.get('pending_password')
+
+        ctx_erreur = {
+            'verify_url': reverse('accounts:verify_password'),
+            'cancel_url': reverse('accounts:change_password'),
+            'section_id': 'password-section',
+            'user_email': user.email,
+        }
+
+        if not code_stock:
+            return render(request, 'accounts/section_verify_code.html', {
+                **ctx_erreur, 'error': 'Session expirée. Veuillez recommencer.'
+            })
+
+        if time.time() > expires:
+            for k in ('verif_code_password', 'verif_expires_password', 'pending_password'):
+                request.session.pop(k, None)
+            return render(request, 'accounts/section_verify_code.html', {
+                **ctx_erreur, 'error': 'Code expiré (10 min). Veuillez recommencer.'
+            })
+
+        if code_saisi != code_stock:
+            return render(request, 'accounts/section_verify_code.html', {
+                **ctx_erreur, 'error': 'Code incorrect. Vérifiez votre boîte mail.'
+            })
+
+        # Code valide — appliquer le changement
         admin_token = get_admin_token()
-        user_id = user.id_keystone
-        success = modifier_utilisateur_keystone(request, admin_token, user_id, password=new_pass)
-        
-        if not success:
-            print("Erreur de synchronisation avec le serveur Keystone.")
-            return render(request, 'accounts/section_password.html', {
-                'error_message': "Veuillez reessayer plus tard !",
-                "form_data": request.POST
-                })
+        user_id     = user.id_keystone
+        success     = modifier_utilisateur_keystone(admin_token, user_id, password=new_pass)
 
-        # 4. Mise à jour Django
+        if not success:
+            logger.error("verify_password_view: échec synchronisation Keystone")
+            return render(request, 'accounts/section_password.html', {
+                'error_message': "Veuillez réessayer plus tard !"
+            })
+
         user.set_password(new_pass)
         user.save()
         update_session_auth_hash(request, user)
-        
-        # Succès : On renvoie le formulaire vide avec un message positif
+
+        for k in ('verif_code_password', 'verif_expires_password', 'pending_password'):
+            request.session.pop(k, None)
+
+        logger.info("verify_password_view: mot de passe modifié pour %s", user.username)
         return render(request, 'accounts/section_password.html', {
             'success_message': "Mot de passe modifié avec succès !"
-            })
-            
+        })
+
     return redirect('accounts:profile')
+
+
+# Fonction pour changer ou supprimer la photo de profil
+@login_required
+def change_photo_view(request):
+    if request.method == 'POST':
+        user = request.user
+
+        if request.POST.get('supprimer_photo'):
+            if user.photo_profil:
+                user.photo_profil.delete(save=False)
+                user.photo_profil = None
+                user.save()
+            return render(request, 'accounts/section_profil.html', {
+                'user': user,
+                'success_message_photo': 'Photo de profil supprimée.'
+            })
+
+        if request.FILES.get('photo_profil'):
+            if user.photo_profil:
+                user.photo_profil.delete(save=False)
+            user.photo_profil = request.FILES['photo_profil']
+            user.save()
+            return render(request, 'accounts/section_profil.html', {
+                'user': user,
+                'success_message_photo': 'Photo de profil mise à jour avec succès !'
+            })
+
+    return render(request, 'accounts/section_profil.html', {
+        'user': request.user,
+        'error_message_photo': 'Aucun fichier sélectionné.'
+    })
+
 
 # Fonction pour recuperer le profile de l'utilisateur connecte
 @login_required
 def profile_view(request):
-    # Si requête HTMX, retourner uniquement le contenu
     if request.headers.get('HX-Request'):
         return render(request, 'accounts/profile_partiel.html', {'user': request.user})
-    
-    # Sinon, retourner la page complète
     return render(request, 'accounts/profile.html', {'user': request.user})

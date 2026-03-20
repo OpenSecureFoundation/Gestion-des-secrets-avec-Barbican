@@ -1,19 +1,102 @@
+/* ── Popup cards ── */
+.barbi-popup-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 70vh;
+    padding: 2rem 1rem;
+}
+
+.barbi-popup-card {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 6px 32px rgba(74, 14, 78, 0.10);
+    padding: 2.5rem 2rem;
+    max-width: 480px;
+    width: 100%;
+}
+
+.barbi-popup-btn-primary {
+    display: inline-block;
+    background: #6c3fd5;
+    color: #fff !important;
+    font-weight: 700;
+    font-size: 0.82rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.55rem 1.6rem;
+    border-radius: 8px;
+    border: none;
+    text-decoration: none;
+    transition: background .2s;
+}
+.barbi-popup-btn-primary:hover { background: #5530b5; }
+
+.barbi-popup-btn-danger {
+    display: inline-block;
+    background: #dc3545;
+    color: #fff !important;
+    font-weight: 700;
+    font-size: 0.82rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.55rem 1.6rem;
+    border-radius: 8px;
+    border: none;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background .2s;
+}
+.barbi-popup-btn-danger:hover { background: #b02a37; }
+
+.barbi-popup-btn-secondary {
+    display: inline-block;
+    background: transparent;
+    color: #6b7280;
+    font-weight: 600;
+    font-size: 0.85rem;
+    padding: 0.55rem 1rem;
+    border: none;
+    text-decoration: none;
+    cursor: pointer;
+    transition: color .2s;
+}
+.barbi-popup-btn-secondary:hover { color: #374151; }
+
 /* Barre de recherche */
-.search-input {
+.search-container {
     border: 1.5px solid var(--barbi-purple);
-    border-radius: 8px 0 0 8px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fff;
+}
+
+.search-input {
+    border: none;
+    border-radius: 0;
     padding: 5px 15px;
     outline: none;
-    width: 200px;
+    background: transparent;
+    min-width: 0;
+}
+
+.search-input:focus {
+    outline: none;
+    box-shadow: none;
 }
 
 .search-btn {
-    background: white;
-    border: 1.5px solid var(--barbi-purple);
-    border-left: none;
-    border-radius: 0 8px 8px 0;
+    background: transparent;
+    border: none;
+    border-left: 1px solid #e0cfe6;
+    border-radius: 0;
     padding: 5px 12px;
-    color: #333;
+    color: var(--barbi-purple);
+    flex-shrink: 0;
+}
+
+.search-btn:hover {
+    background: #f3e8f7;
 }
 
 /* Étiquettes du tableau (Labels) */

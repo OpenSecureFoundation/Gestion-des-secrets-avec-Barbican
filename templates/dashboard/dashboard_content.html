@@ -1,0 +1,388 @@
+<div id="dashboard-container" class="container-fluid p-4" style="background-color: var(--barbi-light-bg); min-height: 80vh;">
+
+  <h3 class="fw-bold mb-1 text-purple">Dashboard</h3>
+  <p class="text-muted small mb-4">
+    Vue d'ensemble de vos applications et secrets
+    {% if q %}
+      &nbsp;<span class="badge" style="background:#f3e8f7; color:#4a0e4e; font-size:0.75rem;">
+        <i class="fas fa-filter me-1"></i>{{ q }}
+      </span>
+    {% endif %}
+  </p>
+
+  <!-- ── Cartes de statistiques ── -->
+  <div class="row g-3 mb-4">
+
+    <!-- Applications — cliquable → mes applications -->
+    <div class="col-6">
+      <div class="card border-0 shadow-sm rounded-3 bg-white h-100 p-3 position-relative"
+           style="cursor:pointer; transition: box-shadow .2s;"
+           onmouseenter="this.style.boxShadow='0 4px 16px rgba(74,14,78,.18)'"
+           onmouseleave="this.style.boxShadow=''">
+        <div class="d-flex align-items-center justify-content-center h-100 gap-3">
+          <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+               style="width:56px; height:56px; background:#f3e8ff;">
+            <i class="fas fa-th-large" style="font-size:1.6rem; color:#4a0e4e;"></i>
+          </div>
+          <div>
+            <div style="font-size:2.2rem; font-weight:700; color:#4a0e4e; line-height:1;">{{ total_apps }}</div>
+            <div class="text-muted small mt-1">Applications</div>
+          </div>
+        </div>
+        <a hx-get="{% url 'apps_manager:list_app' %}"
+           hx-target="#main-display"
+           hx-push-url="true"
+           class="stretched-link"></a>
+      </div>
+    </div>
+
+    <!-- Secrets -->
+    <div class="col-6">
+      <div class="card border-0 shadow-sm rounded-3 bg-white h-100 p-3">
+        <div class="d-flex align-items-center justify-content-center h-100 gap-3">
+          <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+               style="width:56px; height:56px; background:#f3e8ff;">
+            <i class="fas fa-key" style="font-size:1.6rem; color:#4a0e4e;"></i>
+          </div>
+          <div>
+            <div style="font-size:2.2rem; font-weight:700; color:#4a0e4e; line-height:1;">{{ total_secrets }}</div>
+            <div class="text-muted small mt-1">Secrets</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Graphes ── -->
+  <div class="row g-3 mb-4">
+
+    <!-- Répartition par type de secret -->
+    <div class="col-12 col-md-4">
+      <div class="card border-0 shadow-sm rounded-3 bg-white p-4 h-100">
+        <h6 class="fw-semibold text-purple mb-3">Répartition des types de secrets</h6>
+        {% if total_secrets > 0 %}
+        <div style="max-height:260px; display:flex; justify-content:center;">
+          <canvas id="chartTypes"></canvas>
+        </div>
+        {% else %}
+        <p class="text-muted fst-italic text-center mt-4">Aucun secret enregistré.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Apps avec / sans secrets -->
+    <div class="col-12 col-md-4">
+      <div class="card border-0 shadow-sm rounded-3 bg-white p-4 h-100">
+        <h6 class="fw-semibold text-purple mb-3">Applications avec / sans secrets</h6>
+        {% if total_apps > 0 %}
+        <div style="max-height:260px; display:flex; justify-content:center;">
+          <canvas id="chartApps"></canvas>
+        </div>
+        {% else %}
+        <p class="text-muted fst-italic text-center mt-4">Aucune application enregistrée.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Taux de renouvellement -->
+    <div class="col-12 col-md-4">
+      <div class="card border-0 shadow-sm rounded-3 bg-white p-4 h-100">
+        <h6 class="fw-semibold text-purple mb-3">Taux de renouvellement</h6>
+        {% if total_secrets > 0 %}
+        <div style="max-height:260px; display:flex; justify-content:center;">
+          <canvas id="chartRenewed"></canvas>
+        </div>
+        {% else %}
+        <p class="text-muted fst-italic text-center mt-4">Aucun secret enregistré.</p>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Tableau des prochains renouvellements ── -->
+  <div class="card border-0 shadow-sm rounded-3 bg-white p-4">
+    <h6 class="fw-semibold text-purple mb-3">
+      <i class="fas fa-clock me-2"></i>Prochains renouvellements (dans moins de 30 jours)
+    </h6>
+    {% if upcoming %}
+    <div class="table-responsive">
+      <table class="table table-hover align-middle small mb-0">
+        <thead class="text-muted text-uppercase" style="font-size:0.75rem;">
+          <tr>
+
+            <!-- Application -->
+            <th>
+              Application
+              {% if sort_by == 'app_asc' %}
+                <a hx-get="{% url 'apps_manager:dashboard' %}?sort=app_desc{% if q %}&q={{ q|urlencode }}{% endif %}"
+                   hx-target="#dashboard-container" hx-swap="outerHTML" hx-push-url="true"
+                   style="cursor:pointer; color:inherit; text-decoration:none;" title="Trier Z→A">
+                  <i class="fas fa-sort-up"></i>
+                </a>
+              {% elif sort_by == 'app_desc' %}
+                <a hx-get="{% url 'apps_manager:dashboard' %}?sort=app_asc{% if q %}&q={{ q|urlencode }}{% endif %}"
+                   hx-target="#dashboard-container" hx-swap="outerHTML" hx-push-url="true"
+                   style="cursor:pointer; color:inherit; text-decoration:none;" title="Trier A→Z">
+                  <i class="fas fa-sort-down"></i>
+                </a>
+              {% else %}
+                <a hx-get="{% url 'apps_manager:dashboard' %}?sort=app_asc{% if q %}&q={{ q|urlencode }}{% endif %}"
+                   hx-target="#dashboard-container" hx-swap="outerHTML" hx-push-url="true"
+                   style="cursor:pointer; color:#bbb; text-decoration:none;" title="Trier">
+                  <i class="fas fa-sort"></i>
+                </a>
+              {% endif %}
+            </th>
+
+            <!-- Secret -->
+            <th>
+              Secret
+              {% if sort_by == 'secret_asc' %}
+                <a hx-get="{% url 'apps_manager:dashboard' %}?sort=secret_desc{% if q %}&q={{ q|urlencode }}{% endif %}"
+                   hx-target="#dashboard-container" hx-swap="outerHTML" hx-push-url="true"
+                   style="cursor:pointer; color:inherit; text-decoration:none;" title="Trier Z→A">
+                  <i class="fas fa-sort-up"></i>
+                </a>
+              {% elif sort_by == 'secret_desc' %}
+                <a hx-get="{% url 'apps_manager:dashboard' %}?sort=secret_asc{% if q %}&q={{ q|urlencode }}{% endif %}"
+                   hx-target="#dashboard-container" hx-swap="outerHTML" hx-push-url="true"
+                   style="cursor:pointer; color:inherit; text-decoration:none;" title="Trier A→Z">
+                  <i class="fas fa-sort-down"></i>
+                </a>
+              {% else %}
+                <a hx-get="{% url 'apps_manager:dashboard' %}?sort=secret_asc{% if q %}&q={{ q|urlencode }}{% endif %}"
+                   hx-target="#dashboard-container" hx-swap="outerHTML" hx-push-url="true"
+                   style="cursor:pointer; color:#bbb; text-decoration:none;" title="Trier">
+                  <i class="fas fa-sort"></i>
+                </a>
+              {% endif %}
+            </th>
+
+            <!-- Type -->
+            <th>
+              Type
+              {% if sort_by == 'type_asc' %}
+                <a hx-get="{% url 'apps_manager:dashboard' %}?sort=type_desc{% if q %}&q={{ q|urlencode }}{% endif %}"
+                   hx-target="#dashboard-container" hx-swap="outerHTML" hx-push-url="true"
+                   style="cursor:pointer; color:inherit; text-decoration:none;" title="Trier Z→A">
+                  <i class="fas fa-sort-up"></i>
+                </a>
+              {% elif sort_by == 'type_desc' %}
+                <a hx-get="{% url 'apps_manager:dashboard' %}?sort=type_asc{% if q %}&q={{ q|urlencode }}{% endif %}"
+                   hx-target="#dashboard-container" hx-swap="outerHTML" hx-push-url="true"
+                   style="cursor:pointer; color:inherit; text-decoration:none;" title="Trier A→Z">
+                  <i class="fas fa-sort-down"></i>
+                </a>
+              {% else %}
+                <a hx-get="{% url 'apps_manager:dashboard' %}?sort=type_asc{% if q %}&q={{ q|urlencode }}{% endif %}"
+                   hx-target="#dashboard-container" hx-swap="outerHTML" hx-push-url="true"
+                   style="cursor:pointer; color:#bbb; text-decoration:none;" title="Trier">
+                  <i class="fas fa-sort"></i>
+                </a>
+              {% endif %}
+            </th>
+
+            <!-- Date d'expiration -->
+            <th>
+              Date d'expiration
+              {% if sort_by == 'date_asc' %}
+                <a hx-get="{% url 'apps_manager:dashboard' %}?sort=date_desc{% if q %}&q={{ q|urlencode }}{% endif %}"
+                   hx-target="#dashboard-container" hx-swap="outerHTML" hx-push-url="true"
+                   style="cursor:pointer; color:inherit; text-decoration:none;" title="Trier décroissant">
+                  <i class="fas fa-sort-up"></i>
+                </a>
+              {% elif sort_by == 'date_desc' %}
+                <a hx-get="{% url 'apps_manager:dashboard' %}?sort=date_asc{% if q %}&q={{ q|urlencode }}{% endif %}"
+                   hx-target="#dashboard-container" hx-swap="outerHTML" hx-push-url="true"
+                   style="cursor:pointer; color:inherit; text-decoration:none;" title="Trier croissant">
+                  <i class="fas fa-sort-down"></i>
+                </a>
+              {% else %}
+                <a hx-get="{% url 'apps_manager:dashboard' %}?sort=date_asc{% if q %}&q={{ q|urlencode }}{% endif %}"
+                   hx-target="#dashboard-container" hx-swap="outerHTML" hx-push-url="true"
+                   style="cursor:pointer; color:#bbb; text-decoration:none;" title="Trier">
+                  <i class="fas fa-sort"></i>
+                </a>
+              {% endif %}
+            </th>
+
+            <!-- Jours restants (même tri que date) -->
+            <th>
+              Jours restants
+              {% if sort_by == 'date_asc' %}
+                <a hx-get="{% url 'apps_manager:dashboard' %}?sort=date_desc{% if q %}&q={{ q|urlencode }}{% endif %}"
+                   hx-target="#dashboard-container" hx-swap="outerHTML" hx-push-url="true"
+                   style="cursor:pointer; color:inherit; text-decoration:none;" title="Trier décroissant">
+                  <i class="fas fa-sort-up"></i>
+                </a>
+              {% elif sort_by == 'date_desc' %}
+                <a hx-get="{% url 'apps_manager:dashboard' %}?sort=date_asc{% if q %}&q={{ q|urlencode }}{% endif %}"
+                   hx-target="#dashboard-container" hx-swap="outerHTML" hx-push-url="true"
+                   style="cursor:pointer; color:inherit; text-decoration:none;" title="Trier croissant">
+                  <i class="fas fa-sort-down"></i>
+                </a>
+              {% else %}
+                <a hx-get="{% url 'apps_manager:dashboard' %}?sort=date_asc{% if q %}&q={{ q|urlencode }}{% endif %}"
+                   hx-target="#dashboard-container" hx-swap="outerHTML" hx-push-url="true"
+                   style="cursor:pointer; color:#bbb; text-decoration:none;" title="Trier">
+                  <i class="fas fa-sort"></i>
+                </a>
+              {% endif %}
+            </th>
+
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in upcoming %}
+          <tr>
+            <td class="fw-semibold">
+              <a hx-get="{% url 'apps_manager:detail_app' %}?projet_id={{ c.projet.id_projet }}"
+                 hx-target="#main-display"
+                 hx-push-url="true"
+                 class="text-decoration-none"
+                 style="color:#4a0e4e; cursor:pointer;"
+                 title="Voir les secrets de cette application">
+                {{ c.projet.application.nom_app }}
+              </a>
+            </td>
+            <td>{{ c.nom_conteneur }}</td>
+            <td>
+              {% if c.type_conteneur == 'generic' %}
+                <span class="badge rounded-pill" style="background:#f3e8ff; color:#4a0e4e;">Clé API</span>
+              {% elif c.type_conteneur == 'rsa' %}
+                <span class="badge rounded-pill" style="background:#e8f0ff; color:#0d47a1;">Paire de clés</span>
+              {% else %}
+                <span class="badge rounded-pill" style="background:#e8fff0; color:#1b5e20;">Certificat SSL/TLS</span>
+              {% endif %}
+            </td>
+            <td>{{ c.date_expiration|date:"d/m/Y" }}</td>
+            <td>
+              {% if c.jours_restants <= 7 %}
+                <span class="badge bg-danger">{{ c.jours_restants }}j</span>
+              {% else %}
+                <span class="badge bg-warning text-dark">{{ c.jours_restants }}j</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if page_obj_upcoming.paginator.num_pages > 1 %}
+    <nav class="d-flex justify-content-center align-items-center gap-1 mt-3 flex-wrap">
+
+      {% if page_obj_upcoming.has_previous %}
+      <a hx-get="{% url 'apps_manager:dashboard' %}?page_upcoming={{ page_obj_upcoming.previous_page_number }}&sort={{ sort_by }}{% if q %}&q={{ q|urlencode }}{% endif %}"
+         hx-target="#dashboard-container" hx-swap="outerHTML" hx-push-url="true"
+         class="btn btn-sm btn-outline-secondary" style="cursor:pointer;">
+        <i class="fas fa-chevron-left"></i>
+      </a>
+      {% else %}
+      <button class="btn btn-sm btn-outline-secondary" disabled><i class="fas fa-chevron-left"></i></button>
+      {% endif %}
+
+      {% for num in page_obj_upcoming.paginator.page_range %}
+        {% if num == page_obj_upcoming.number %}
+        <button class="btn btn-sm fw-bold" style="background:#4a0e4e; color:#fff; min-width:2rem;">{{ num }}</button>
+        {% elif num == 1 or num == page_obj_upcoming.paginator.num_pages or num >= page_obj_upcoming.number|add:"-2" and num <= page_obj_upcoming.number|add:"2" %}
+        <a hx-get="{% url 'apps_manager:dashboard' %}?page_upcoming={{ num }}&sort={{ sort_by }}{% if q %}&q={{ q|urlencode }}{% endif %}"
+           hx-target="#dashboard-container" hx-swap="outerHTML" hx-push-url="true"
+           class="btn btn-sm btn-outline-secondary" style="cursor:pointer; min-width:2rem;">{{ num }}</a>
+        {% elif num == page_obj_upcoming.number|add:"-3" or num == page_obj_upcoming.number|add:"3" %}
+        <span class="text-muted px-1">…</span>
+        {% endif %}
+      {% endfor %}
+
+      {% if page_obj_upcoming.has_next %}
+      <a hx-get="{% url 'apps_manager:dashboard' %}?page_upcoming={{ page_obj_upcoming.next_page_number }}&sort={{ sort_by }}{% if q %}&q={{ q|urlencode }}{% endif %}"
+         hx-target="#dashboard-container" hx-swap="outerHTML" hx-push-url="true"
+         class="btn btn-sm btn-outline-secondary" style="cursor:pointer;">
+        <i class="fas fa-chevron-right"></i>
+      </a>
+      {% else %}
+      <button class="btn btn-sm btn-outline-secondary" disabled><i class="fas fa-chevron-right"></i></button>
+      {% endif %}
+
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <p class="text-muted fst-italic text-center mt-2">Aucun renouvellement prévu dans les 30 prochains jours.</p>
+    {% endif %}
+  </div>
+
+</div>
+
+<script>
+(function() {
+  var datalabelsPlugin = (typeof ChartDataLabels !== 'undefined') ? [ChartDataLabels] : [];
+
+  function pctFormatter(value, ctx) {
+    var total = ctx.dataset.data.reduce(function(a, b) { return a + b; }, 0);
+    if (!total) return '';
+    var pct = Math.round(value / total * 100);
+    return pct > 0 ? pct + '%' : '';
+  }
+
+  function creerGraphe(id, labels, data, colors) {
+    var canvas = document.getElementById(id);
+    if (!canvas) return;
+    var existing = Chart.getChart(canvas);
+    if (existing) existing.destroy();
+    new Chart(canvas, {
+      type: 'doughnut',
+      data: {
+        labels: labels,
+        datasets: [{
+          data: data,
+          backgroundColor: colors,
+          borderWidth: 2,
+          borderColor: '#fff'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: { position: 'bottom', labels: { font: { size: 12 } } },
+          datalabels: {
+            formatter: pctFormatter,
+            color: '#fff',
+            font: { weight: 'bold', size: 13 }
+          }
+        }
+      },
+      plugins: datalabelsPlugin
+    });
+  }
+
+  {% if total_secrets > 0 %}
+  creerGraphe(
+    'chartTypes',
+    ['Clés API', 'Paires de clés', 'Certificats SSL/TLS'],
+    [{{ generic_count }}, {{ rsa_count }}, {{ certificate_count }}],
+    ['#b39ddb', '#7986cb', '#4db6ac']
+  );
+  {% endif %}
+
+  {% if total_apps > 0 %}
+  creerGraphe(
+    'chartApps',
+    ['Avec secrets', 'Sans secrets'],
+    [{{ apps_with_secrets }}, {{ apps_without_secrets }}],
+    ['#4a0e4e', '#d1c4e9']
+  );
+  {% endif %}
+
+  {% if total_secrets > 0 %}
+  creerGraphe(
+    'chartRenewed',
+    ['Renouvelés', 'Non renouvelés'],
+    [{{ renewed_count }}, {{ not_renewed_count }}],
+    ['#4db6ac', '#d1c4e9']
+  );
+  {% endif %}
+})();
+</script>

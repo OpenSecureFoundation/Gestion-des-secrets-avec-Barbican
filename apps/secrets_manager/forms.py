@@ -2,7 +2,7 @@ from django import forms
 
 class AjouterSecretForm(forms.Form):
 
-    id_projet = forms.CharField(widget=forms.HiddenInput())
+    projet_id = forms.CharField(widget=forms.HiddenInput())
     nom_secret = forms.CharField(
         max_length=255,
         widget=forms.TextInput(attrs={"placeholder": "ex: api-key-production"}),
@@ -10,16 +10,6 @@ class AjouterSecretForm(forms.Form):
     duree_validite = forms.IntegerField(
         min_value=1,
         widget=forms.NumberInput(attrs={"placeholder": "365"}),
-    )
-    frequence_rotation = forms.ChoiceField(
-        choices=[
-            (1,    "Quotidienne"),
-            (7,   "Hebdomadaire"),
-            (30,      "Mensuelle"),
-            (90,  "Trimestrielle"),
-            (365,       "Annuelle"),
-        ],
-        initial=30,
     )
     delai_renouvellement = forms.IntegerField(
         min_value=1,

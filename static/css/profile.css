@@ -1,10 +1,11 @@
 /* ===== COULEURS & VARIABLES ===== */
 :root {
-  --purple: #7B2D8B;
+  --purple: #4a0e4e;
+  --purple-mid: #7b1fa2;
   --purple-light: #f3e8f7;
-  --bg-page: #f0e8f5;
+  --bg-page: #f8f0fc;
   --input-border: #d8b4e8;
-  --input-focus: #7B2D8B;
+  --input-focus: #7b1fa2;
   --text-dark: #1a1a1a;
   --text-label: #333;
   --white: #ffffff;

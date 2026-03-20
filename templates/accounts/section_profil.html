@@ -1,0 +1,81 @@
+<div id="profil-section" class="bg-white p-4 rounded-4 shadow-sm mb-4">
+    <h5 class="mb-3">Profil</h5>
+    <hr>
+
+    {% if success_message_photo %}
+        <div class="alert alert-success alert-dismissible fade show barbi-alert" role="alert">
+            <i class="fas fa-check-circle me-2"></i>{{ success_message_photo }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% elif error_message_photo %}
+        <div class="alert alert-danger alert-dismissible fade show barbi-alert" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i>{{ error_message_photo }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% endif %}
+
+    <div class="d-flex flex-column align-items-center text-center gap-3">
+
+        <!-- Avatar -->
+        {% if user.photo_profil %}
+            <img id="avatar-preview"
+                 src="{{ user.photo_profil.url }}"
+                 alt="Photo de profil"
+                 class="rounded-circle border"
+                 style="width:120px; height:120px; object-fit:cover; border-color:#d1c4e9 !important;">
+        {% else %}
+            <div id="avatar-preview"
+                 class="rounded-circle d-flex align-items-center justify-content-center border"
+                 style="width:120px; height:120px; background:#f3e8ff; border-color:#d1c4e9 !important;">
+                <i class="fas fa-user" style="color:#4a0e4e; font-size:3rem;"></i>
+            </div>
+        {% endif %}
+
+        <!-- Bouton changer la photo -->
+        <form id="form-photo"
+              hx-post="{% url 'accounts:change_photo' %}"
+              hx-target="#profil-section"
+              hx-swap="outerHTML"
+              hx-encoding="multipart/form-data">
+            {% csrf_token %}
+            <label for="photo-input" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-camera me-1"></i>Changer la photo
+            </label>
+            <input type="file"
+                   id="photo-input"
+                   name="photo_profil"
+                   accept="image/png, image/jpeg, image/webp"
+                   style="display:none;"
+                   onchange="previewEtSoumettre(this)">
+        </form>
+
+        <!-- Infos -->
+        <div>
+            <p class="fw-bold mb-1 fs-5 text-purple">{{ user.first_name }} {{ user.last_name }}</p>
+            <p class="text-muted small mb-0">{{ user.email }}</p>
+        </div>
+
+    </div>
+</div>
+
+<script>
+function previewEtSoumettre(input) {
+    if (!input.files || !input.files[0]) return;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+        var preview = document.getElementById('avatar-preview');
+        if (preview.tagName === 'IMG') {
+            preview.src = e.target.result;
+        } else {
+            var img = document.createElement('img');
+            img.id = 'avatar-preview';
+            img.src = e.target.result;
+            img.className = 'rounded-circle border';
+            img.style = 'width:130px; height:130px; object-fit:cover; border-color:#d1c4e9 !important;';
+            preview.parentNode.replaceChild(img, preview);
+        }
+    };
+    reader.readAsDataURL(input.files[0]);
+    htmx.trigger(document.getElementById('form-photo'), 'submit');
+}
+</script>

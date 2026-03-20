@@ -1,4 +1,6 @@
+import base64
 import datetime
+import secrets as secrets_module
 from barbicanclient import client as barbican_client
 from barbicanclient import exceptions as barbican_exceptions
 from keystoneauth1 import identity, session as ks_session
@@ -43,12 +45,13 @@ class CASigningError(Exception):
 # ------------------------------------------------------------------ #
 # FONCTION POUR CREER UN CLIENT BARBICAN                             #
 # ------------------------------------------------------------------ #
-def get_barbican_client(user_token_scope):
+def get_barbican_client(user_token_scope, projet_id):
     
     try:
         auth = identity.Token(
             auth_url=settings.KEYSTONE_URL,
             token=user_token_scope,
+            project_id=projet_id             ###################################################
         )
         sess = ks_session.Session(auth=auth)
         return barbican_client.Client(
@@ -63,10 +66,8 @@ def get_barbican_client(user_token_scope):
 # ------------------------------------------------------------------ #
 # FONCTION POUR COMMANDER UNE CLE OU UNE PAIRE DE CLES               #
 # ------------------------------------------------------------------ #
-def commander_secret_barbican(user_token_scope, payload):
+def commander_secret_barbican(bc, payload):
    
-    bc = get_barbican_client(user_token_scope)
-
     # 1. Soumission de l'ordre selon le type                             
     try:
         order_type = payload.get("type")
@@ -132,27 +133,24 @@ def commander_secret_barbican(user_token_scope, payload):
 # ------------------------------------------------------------------ #
 # FONCTION POUR GENERER UNE CLE UNIQUE                               #
 # ------------------------------------------------------------------ #
-def generer_cle_symetrique(user_token_scope, key_name):
-    
-    order_body = {
-        "type": "key",
-        "meta": {
-            "name":        key_name,
-            "algorithm":   "aes",
-            "bit_length":  256,
-            "mode":        "cbc",
-            "secret_type": "symmetric",
-        },
-    }
-    order = commander_secret_barbican(user_token_scope, order_body)
-    print(f"Clé symétrique générée et disponible : {order.secret_ref}")
-    return order.secret_ref
+def generer_cle_symetrique(bc, key_name):
+    """Génère une clé symétrique 256 bits et la stocke en base64 (text/plain)."""
+    raw_key = secrets_module.token_bytes(32)  # 256 bits
+    payload_b64 = base64.b64encode(raw_key).decode('ascii')
+    secret_ref = stocker_cle_barbican(
+        bc=bc,
+        secret_name=key_name,
+        secret_type="symmetric",
+        payload=payload_b64,
+        payload_content_type="text/plain",
+    )
+    return secret_ref
 
 
 # ------------------------------------------------------------------ #
 # FONCTION POUR GENERER UNE PAIRE DE CLES                            #
 # ------------------------------------------------------------------ #
-def generer_cle_asymetrique(user_token_scope, key_name):
+def generer_cle_asymetrique(bc, key_name):
     
     order_body = {
         "type": "asymmetric",
@@ -162,7 +160,7 @@ def generer_cle_asymetrique(user_token_scope, key_name):
             "bit_length": 2048,
         },
     }
-    order = commander_secret_barbican(user_token_scope, order_body)
+    order = commander_secret_barbican(bc, order_body)
     print(f"Paire de clés asymétrique générée et disponible : {order.container_ref}")
     return order.container_ref
 
@@ -300,15 +298,42 @@ def soumettre_csr_openssl(csr_pem, validite_jours):
 
 
 # ------------------------------------------------------------------ #
-# FONCTION POUR STOCKER UN SECRET DANS BARBICAN                      #
+# FONCTION POUR STOCKER UNE CLE DANS BARBICAN                      #
 # ------------------------------------------------------------------ #
-def stocker_secret_barbican(bc, secret_name, secret_type, payload, payload_content_type="text/plain"):
+def stocker_cle_barbican(bc, secret_name, secret_type, payload, payload_content_type="text/plain"):
     try:
         secret = bc.secrets.create(
             name=secret_name,
             algorithm="aes",
             bit_length=256,
             mode="cbc",
+            secret_type=secret_type,
+            payload=payload,
+            payload_content_type=payload_content_type,
+        )
+        # On récupère l'URI retournée par la méthode store()
+        secret_uri = secret.store()         
+        print(f"Secret '{secret_name}' stocké avec succès : {secret_uri}")        
+        return secret_uri
+    except (barbican_exceptions.HTTPClientError,
+            barbican_exceptions.HTTPServerError) as e:
+        raise BarbicanConnectionError(
+            f"Barbican a refusé la création du secret '{secret_name}' : {str(e)}"
+        )
+    except Exception as e:
+        raise BarbicanConnectionError(
+            f"Erreur inattendue lors de la création du secret : {str(e)}"
+        )
+    
+
+# ------------------------------------------------------------------ #
+# FONCTION POUR STOCKER UN CERTIFICAT DANS BARBICAN                      #
+# ------------------------------------------------------------------ #
+def stocker_certificat_barbican(bc, secret_name, secret_type, payload, payload_content_type="text/plain"):
+    try:
+        secret = bc.secrets.create(
+            name=secret_name,
+            bit_length=256,
             secret_type=secret_type,
             payload=payload,
             payload_content_type=payload_content_type,
@@ -334,7 +359,7 @@ def stocker_secret_barbican(bc, secret_name, secret_type, payload, payload_conte
 def stocker_paire_cles_conteneur_barbican(bc, secret_name, payload_private, payload_public):
     
     # Stockage de la clé privée
-    secret_ref_private = stocker_secret_barbican(
+    secret_ref_private = stocker_cle_barbican(
         bc=bc,
         secret_name=f"{secret_name}-private",
         secret_type="private",
@@ -343,7 +368,7 @@ def stocker_paire_cles_conteneur_barbican(bc, secret_name, payload_private, payl
     )
 
     # Stockage de la clé publique
-    secret_ref_public = stocker_secret_barbican(
+    secret_ref_public = stocker_cle_barbican(
         bc=bc,
         secret_name=f"{secret_name}-public",
         secret_type="public",
@@ -397,16 +422,168 @@ def stocker_cle_unique_conteneur_barbican(bc, secret_name, secret_ref):
 
 
 # ------------------------------------------------------------------ #
+# FONCTION POUR SUPPRIMER UN SECRET DANS BARBICAN                    #
+# ------------------------------------------------------------------ #
+def supprimer_secret_barbican(bc, secret_ref):
+    try:
+        secret = bc.secrets.get(secret_ref)
+        secret.delete()
+        print(f"Secret supprimé dans Barbican : {secret_ref}")
+        return True
+    except barbican_exceptions.HTTPClientError as e:
+        if e.status_code == 404:
+            print(f"Secret déjà absent de Barbican : {secret_ref}")
+            return True
+        raise BarbicanConnectionError(
+            f"Erreur Barbican lors de la suppression du secret : {str(e)}"
+        )
+    except Exception as e:
+        raise BarbicanConnectionError(
+            f"Erreur inattendue lors de la suppression du secret : {str(e)}"
+        )
+
+
+# ------------------------------------------------------------------ #
+# FONCTION POUR SUPPRIMER UN CONTENEUR DANS BARBICAN                 #
+# ------------------------------------------------------------------ #
+def supprimer_conteneur_barbican(bc, container_ref):
+    try:
+        container = bc.containers.get(container_ref)
+        container.delete()
+        print(f"Conteneur supprimé dans Barbican : {container_ref}")
+        return True
+    except barbican_exceptions.HTTPClientError as e:
+        if e.status_code == 404:
+            print(f"Conteneur déjà absent de Barbican : {container_ref}")
+            return True
+        raise BarbicanConnectionError(
+            f"Erreur Barbican lors de la suppression du conteneur : {str(e)}"
+        )
+    except Exception as e:
+        raise BarbicanConnectionError(
+            f"Erreur inattendue lors de la suppression du conteneur : {str(e)}"
+        )
+
+
+# ------------------------------------------------------------------ #
+# FONCTION POUR RENOMMER LES SECRETS ET CONTENEUR DANS BARBICAN      #
+# ------------------------------------------------------------------ #
+def renommer_secrets_conteneur_barbican(bc, conteneur_db, nouveau_nom):
+    """
+    Recrée tous les secrets et le conteneur Barbican avec un nouveau nom.
+    Récupère les payloads existants, supprime les anciens, recrée les nouveaux.
+    Retourne : {'container_ref': str, 'secrets': [{'nom', 'type_secret', 'ref'}]}
+    """
+    SUFFIX_TO_ROLE = {
+        "":             "api_key",
+        "-private":     "private_key",
+        "-public":      "public_key",
+        "-certificate": "certificate",
+    }
+
+    # 1. Récupérer les payloads depuis Barbican avant suppression
+    secrets_reconstruits = []
+    for s in conteneur_db.secret.all():
+        try:
+            bc_secret = bc.secrets.get(s.ref_secret)
+            payload      = bc_secret.payload
+            content_type = bc_secret.content_types.get("default", "text/plain")
+            secret_type  = bc_secret.secret_type
+        except Exception as e:
+            raise BarbicanConnectionError(
+                f"Impossible de récupérer le secret '{s.nom_secret}' depuis Barbican : {str(e)}"
+            )
+        suffix = s.nom_secret[len(conteneur_db.nom_conteneur):]   # ex: "" ou "-private"
+        secrets_reconstruits.append({
+            "suffix":       suffix,
+            "role":         SUFFIX_TO_ROLE.get(suffix, "api_key"),
+            "ancien_nom":   s.nom_secret,
+            "nouveau_nom":  f"{nouveau_nom}{suffix}",
+            "type_secret":  secret_type,
+            "payload":      payload,
+            "content_type": content_type,
+        })
+
+    # 2. Supprimer l'ancien conteneur (old + new si rotation)
+    if conteneur_db.ref_old_conteneur:
+        supprimer_conteneur_barbican(bc, conteneur_db.ref_old_conteneur)
+    if conteneur_db.ref_new_conteneur:
+        supprimer_conteneur_barbican(bc, conteneur_db.ref_new_conteneur)
+
+    # 3. Supprimer les anciens secrets
+    for s in conteneur_db.secret.all():
+        supprimer_secret_barbican(bc, s.ref_secret)
+
+    # 4. Recréer les secrets avec le nouveau nom
+    nouveaux_bc_secrets = {}
+    nouveaux_secrets_liste = []
+    for s_data in secrets_reconstruits:
+        try:
+            new_bc_secret = bc.secrets.create(
+                name=s_data["nouveau_nom"],
+                secret_type=s_data["type_secret"],
+                payload=s_data["payload"],
+                payload_content_type=s_data["content_type"],
+            )
+            new_ref = new_bc_secret.store()
+        except Exception as e:
+            raise BarbicanConnectionError(
+                f"Erreur lors de la création du secret '{s_data['nouveau_nom']}' : {str(e)}"
+            )
+        nouveaux_bc_secrets[s_data["role"]] = bc.secrets.get(new_ref)
+        nouveaux_secrets_liste.append({
+            "nom":        s_data["nouveau_nom"],
+            "type_secret": s_data["type_secret"],
+            "ref":        new_ref,
+        })
+
+    # 5. Recréer le conteneur du bon type
+    type_conteneur = conteneur_db.type_conteneur
+    try:
+        if type_conteneur == "generic":
+            container = bc.containers.create(
+                name=f"{nouveau_nom}-container",
+                secrets={"api_key": nouveaux_bc_secrets["api_key"]},
+            )
+        elif type_conteneur == "rsa":
+            container = bc.containers.create_rsa(
+                name=f"{nouveau_nom}-keypair",
+                private_key=nouveaux_bc_secrets["private_key"],
+                public_key=nouveaux_bc_secrets["public_key"],
+            )
+        elif type_conteneur == "certificate":
+            container = bc.containers.create_certificate(
+                name=f"{nouveau_nom}-tls",
+                certificate=nouveaux_bc_secrets["certificate"],
+                private_key=nouveaux_bc_secrets["private_key"],
+            )
+        else:
+            raise BarbicanConnectionError(f"Type de conteneur inconnu : '{type_conteneur}'")
+        new_container_ref = container.store()
+    except BarbicanConnectionError:
+        raise
+    except Exception as e:
+        raise BarbicanConnectionError(
+            f"Erreur lors de la création du nouveau conteneur Barbican : {str(e)}"
+        )
+
+    return {
+        "container_ref": new_container_ref,
+        "secrets":       nouveaux_secrets_liste,
+    }
+
+
+# ------------------------------------------------------------------ #
 # FONCTION COMPLETE POUR GENERER UN CERTIFICAT SSL                   #
 # ------------------------------------------------------------------ #
-def generer_ssl(bc, scoped_token, données_ssl):
+def generer_ssl(bc, données_ssl):
     
     secret_name    = données_ssl["secret_name"]
     duree_validite = données_ssl["duree_validite"]
 
     # 1. Génération de la paire de clés asymétrique             
     container_ref = generer_cle_asymetrique(
-        user_token_scope=scoped_token,
+        bc=bc,
         key_name=f"{secret_name}-keypair",
     )
 
@@ -430,12 +607,12 @@ def generer_ssl(bc, scoped_token, données_ssl):
     )
 
     # 4. Stockage du certificat dans Barbican   
-    secret_ref_cert = stocker_secret_barbican(
+    secret_ref_cert = stocker_certificat_barbican(
         bc=bc,
         secret_name=f"{secret_name}-certificate",
         secret_type="certificate",
         payload=certificat_pem,
-        payload_content_type="application/pkix-cert",
+        payload_content_type="text/plain",
     )
 
     # 5. Ajout du certificat dans le conteneur existant     

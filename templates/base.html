@@ -5,101 +5,258 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BarbiLink</title>
-    
+
     <link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}">
     <link rel="stylesheet" href="{% static 'css/all.min.css' %}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="{% static 'css/formulaires.css' %}">
     <link rel="stylesheet" href="{% static 'css/profile.css' %}">
-    <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=1.0">
-    <link rel="stylesheet" href="{% static 'css/apps.css' %}">
-    
+    <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=2.0">
+    <link rel="stylesheet" href="{% static 'css/apps.css' %}?v=3.0">
+
     <script src="{% static 'js/htmx.min.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 </head>
 <body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
-    <div class="sidebar">
+    <div class="sidebar d-flex flex-column">
         <div class="text-center mb-4">
             <img src="{% static 'img/logo.png' %}" alt="BarbiLink" class="img-fluid" style="max-width: 150px;">
         </div>
-        
+
         <ul class="nav flex-column mt-4">
             <li class="nav-item">
-                <a class="nav-link" 
-                   hx-get="{% url 'apps_manager:list_app' %}" 
-                   hx-target="#main-display" 
+                <a class="nav-link"
+                   data-nav-url="{% url 'apps_manager:dashboard' %}"
+                   hx-get="{% url 'apps_manager:dashboard' %}"
+                   hx-target="#main-display"
                    hx-push-url="true"
                    style="cursor:pointer;">
-                    <i class="fas fa-user-cog me-2"></i> Mes applications
+                    <i class="fas fa-tachometer-alt me-2"></i> Dashboard
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link active" 
-                   hx-get="{% url 'accounts:profile' %}" 
-                   hx-target="#main-display" 
+                <a class="nav-link"
+                   data-nav-url="{% url 'apps_manager:list_app' %}"
+                   hx-get="{% url 'apps_manager:list_app' %}"
+                   hx-target="#main-display"
+                   hx-push-url="true"
+                   style="cursor:pointer;">
+                    <i class="fas fa-th-large me-2"></i> Mes applications
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link"
+                   data-nav-url="{% url 'accounts:profile' %}"
+                   hx-get="{% url 'accounts:profile' %}"
+                   hx-target="#main-display"
                    hx-push-url="true"
                    style="cursor:pointer;">
                     <i class="fas fa-user-cog me-2"></i> Mon compte
                 </a>
             </li>
         </ul>
+
+        <!-- Actions en bas de la sidebar -->
+        <div class="mt-auto pt-3" style="border-top: 1px solid var(--purple-border);">
+            <a href="{% url 'accounts:logout' %}" class="nav-link">
+                <i class="fas fa-sign-out-alt me-2"></i> Déconnexion
+            </a>
+        </div>
     </div>
 
     <div class="main-content">
-        <header class="d-flex justify-content-between align-items-center mb-4">
+        <header class="d-flex align-items-center mb-4">
 
-            <!-- Bouton hamburger (visible uniquement mobile) -->
-            <button class="btn-hamburger" onclick="toggleSidebar()">
+            <!-- Hamburger (mobile) -->
+            <button class="btn-hamburger me-3" onclick="toggleSidebar()">
                 <i class="fas fa-bars"></i>
             </button>
 
-            <!-- Utilisateur (droite) -->
-            <div class="d-flex align-items-center ms-auto">
-                <span class="me-3 text-muted"><strong>{{ request.user.username }}</strong></span>
-                <div class="dropdown">
-                <i class="fas fa-user-circle fs-2 text-purple"
-                    data-bs-toggle="dropdown"
-                    style="cursor:pointer;"></i>
-                <ul class="dropdown-menu dropdown-menu-end shadow border-0">
-                    <li><a class="dropdown-item" href="{% url 'accounts:login' %}">
-                    <i class="fas fa-sign-out-alt me-2"></i>Déconnexion
-                    </a></li>
-                    <li><a class="dropdown-item" href="{% url 'accounts:delete_user' %}">
-                    <i class="fas fa-trash me-2"></i>Supprimer mon compte
-                    </a></li>
-                </ul>
+            <!-- Barre de recherche globale -->
+            <div id="navbar-search-container" class="mx-3 flex-grow-1" style="max-width: 280px;">
+                <div class="search-container d-flex align-items-center">
+                    <input type="text"
+                           id="navbar-search-input"
+                           class="search-input w-100"
+                           name="q"
+                           value="{{ q }}"
+                           placeholder="Rechercher..."
+                           hx-get="/apps/search/"
+                           hx-target="#main-display"
+                           hx-swap="innerHTML"
+                           hx-push-url="true"
+                           hx-trigger="keyup changed delay:400ms, search">
+                    <button class="search-btn"
+                            onclick="htmx.trigger(document.getElementById('navbar-search-input'), 'search')">
+                        <i class="fas fa-search"></i>
+                    </button>
                 </div>
             </div>
+
+            <!-- Droite : photo + pseudo (cliquable → profil) -->
+            <a class="ms-auto me-4 d-flex align-items-center gap-2 text-decoration-none"
+               hx-get="{% url 'accounts:profile' %}"
+               hx-target="#main-display"
+               hx-push-url="true"
+               style="cursor:pointer;">
+                {% if request.user.photo_profil %}
+                    <img src="{{ request.user.photo_profil.url }}"
+                         alt="avatar"
+                         class="rounded-circle flex-shrink-0"
+                         style="width:42px; height:42px; object-fit:cover; border:2px solid #d1c4e9;">
+                {% else %}
+                    <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                         style="width:42px; height:42px; background:#4a0e4e;">
+                        <i class="fas fa-user" style="color:white; font-size:0.95rem;"></i>
+                    </div>
+                {% endif %}
+                <div class="lh-sm text-end">
+                    <div class="fw-bold" style="font-size:0.9rem; color:#1a1a2e;">{{ request.user.username }}</div>
+                </div>
+            </a>
 
         </header>
 
         <!-- Overlay -->
         <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
-        <div id="main-display" class="fade-in">      
+        <!-- Zone toast pour les messages Django (succès, erreurs) -->
+        {% if messages %}
+        <div id="barbi-toast-container" style="position:fixed; top:20px; right:20px; z-index:9999; min-width:320px; max-width:440px;">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show barbi-alert shadow rounded mb-2" role="alert">
+                {% if message.tags == 'success' %}
+                    <i class="fas fa-check-circle me-2"></i>
+                {% elif message.tags == 'danger' %}
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                {% elif message.tags == 'warning' %}
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                {% else %}
+                    <i class="fas fa-info-circle me-2"></i>
+                {% endif %}
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div id="main-display" class="fade-in">
             {% block content %}
-                
+
             {% endblock %}
-        </div>    
+        </div>
+
+        <!-- Copyright footer -->
+        <footer class="barbi-footer">
+            <p class="mb-0">Copyright &copy; 2026 <strong>BarbiLink</strong> &mdash; Gestion des secrets avec Barbican OpenStack.<br>
+            Developed by <strong>Rachel &amp; Harvis</strong> &bull; Avec amour et joie.</p>
+        </footer>
     </div>
 
     <script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
-     {% block extra_js %}
-     
-     {% endblock %}
-</body>
-</html>
+    {% block extra_js %}
 
-
-
-
-
+    {% endblock %}
 
 <script>
+/* ── Navigation active + titre navbar dynamiques ── */
+/* Certains chemins doivent activer un lien parent différent */
+var NAV_REMAPS = { '/secrets/': '/apps/' };
+
+function updateActiveNav() {
+  var path = window.location.pathname;
+  var navPath = path;
+  for (var prefix in NAV_REMAPS) {
+    if (path.startsWith(prefix)) { navPath = NAV_REMAPS[prefix]; break; }
+  }
+
+  var best = null, bestLen = -1;
+  document.querySelectorAll('.nav-link[data-nav-url]').forEach(function(link) {
+    link.classList.remove('active');
+    var url = link.getAttribute('data-nav-url');
+    if (url && navPath.startsWith(url) && url.length > bestLen) {
+      best = link; bestLen = url.length;
+    }
+  });
+  if (best) best.classList.add('active');
+
+  updateSearchTarget(path);
+}
+
+function updateSearchTarget(path) {
+  path = path || window.location.pathname;
+  var input = document.getElementById('navbar-search-input');
+  if (!input) return;
+
+  if (path.startsWith('/apps/dashboard')) {
+    input.setAttribute('hx-get', '/apps/dashboard/');
+    input.setAttribute('hx-target', '#dashboard-container');
+    input.setAttribute('hx-swap', 'outerHTML');
+  } else if (path === '/apps/' || path === '/apps') {
+    input.setAttribute('hx-get', '/apps/');
+    input.setAttribute('hx-target', '#apps-list');
+    input.setAttribute('hx-swap', 'outerHTML');
+  } else {
+    input.setAttribute('hx-get', '/apps/search/');
+    input.setAttribute('hx-target', '#main-display');
+    input.setAttribute('hx-swap', 'innerHTML');
+  }
+  htmx.process(input);
+}
+updateActiveNav();
+document.body.addEventListener('htmx:pushedIntoHistory', updateActiveNav);
+document.body.addEventListener('htmx:replacedInHistory', updateActiveNav);
+
+/* ── Copier dans le presse-papiers ── */
+function copierTexte(texte, btn) {
+    navigator.clipboard.writeText(texte).then(function() {
+        var icon = btn.querySelector('i');
+        icon.classList.replace('fa-copy', 'fa-check');
+        icon.style.color = '#198754';
+        setTimeout(function() {
+            icon.classList.replace('fa-check', 'fa-copy');
+            icon.style.color = '#4a0e4e';
+        }, 1500);
+    });
+}
+
 function toggleSidebar() {
   const sidebar = document.querySelector('.sidebar');
   const overlay = document.getElementById('sidebarOverlay');
-
   sidebar.classList.toggle('open');
   overlay.classList.toggle('active');
 }
-</script>
 
+/* ── Auto-dismiss des alertes après 5 secondes ── */
+function initAlerts() {
+  document.querySelectorAll('.barbi-alert').forEach(function(el) {
+    if (el.dataset.timerSet) return;
+    el.dataset.timerSet = '1';
+    setTimeout(function() {
+      try { bootstrap.Alert.getOrCreateInstance(el).close(); } catch(e) {}
+    }, 5000);
+  });
+}
+initAlerts();
+document.body.addEventListener('htmx:afterSwap', initAlerts);
+
+/* ── Déconnexion automatique après 1 minute d'inactivité ── */
+var inactivityTimer;
+var LOGOUT_URL = "{% url 'accounts:logout' %}";
+
+function resetInactivityTimer() {
+  clearTimeout(inactivityTimer);
+  inactivityTimer = setTimeout(function() {
+    window.location.href = LOGOUT_URL;
+  }, 180 * 1000);
+}
+
+['mousemove', 'keydown', 'click', 'scroll', 'touchstart'].forEach(function(evt) {
+  document.addEventListener(evt, resetInactivityTimer, { passive: true });
+});
+resetInactivityTimer();
+</script>
+</body>
+</html>

@@ -4,6 +4,7 @@ __pycache__/*
 venv/
 .env
 media/*
+BarbiLink/certs/
 
 # Sauf les fichiers .gitkeep pour garder la structure des dossiers
 !Media/.gitkeep

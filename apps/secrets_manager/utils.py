@@ -1,10 +1,12 @@
-from secrets_manager.fonctions import generer_cle_asymetrique, generer_cle_symetrique, generer_ssl, stocker_cle_unique_conteneur_barbican, stocker_paire_cles_conteneur_barbican, stocker_secret_barbican
+import base64
+
+from secrets_manager.fonctions import generer_cle_asymetrique, generer_cle_symetrique, generer_ssl, stocker_cle_barbican, stocker_cle_unique_conteneur_barbican, stocker_paire_cles_conteneur_barbican, stocker_certificat_barbican
 
 
 # --------------------------------------------------------------------- #
 # FONCTION POUR TRAITER L'AJOUT D'UNE CLE UNIQUE / D'UNE PAIRE DE CLES  #
 # --------------------------------------------------------------------- #
-def _traiter_cle(bc, scoped_token, données_cle):
+def _traiter_cle(bc, données_cle):
     
     api_type              = données_cle["api_type"]
     secret_name           = données_cle["secret_name"]
@@ -14,11 +16,13 @@ def _traiter_cle(bc, scoped_token, données_cle):
 
     # ── Upload clé unique ── #
     if api_key_file and api_type == "unique":
-        secret_ref = stocker_secret_barbican(
+        payload = base64.b64encode(api_key_file).decode('ascii') if isinstance(api_key_file, bytes) else api_key_file
+        secret_ref = stocker_cle_barbican(
             bc=bc,
             secret_name=secret_name,
-            secret_type="opaque",
-            payload=api_key_file,
+            secret_type="symmetric",
+            payload=payload,
+            payload_content_type="text/plain",
         )
         container_ref = stocker_cle_unique_conteneur_barbican(bc, secret_name, secret_ref)
         return {
@@ -30,7 +34,7 @@ def _traiter_cle(bc, scoped_token, données_cle):
         }
 
     # ── Upload paire de clés ── #
-    elif api_key_file and api_type == "paire":
+    elif api_type == "paire" and (api_private_key_file or api_public_key_file):
         container_ref = stocker_paire_cles_conteneur_barbican(
             bc=bc,
             secret_name=secret_name,
@@ -57,7 +61,7 @@ def _traiter_cle(bc, scoped_token, données_cle):
 
     # ── Génération clé unique ── #
     elif not api_key_file and api_type == "unique":
-        secret_ref = generer_cle_symetrique(scoped_token, secret_name)
+        secret_ref = generer_cle_symetrique(bc, secret_name)
         container_ref = stocker_cle_unique_conteneur_barbican(bc, secret_name, secret_ref)
         return {
             "container_ref":  container_ref,
@@ -69,7 +73,7 @@ def _traiter_cle(bc, scoped_token, données_cle):
 
     # ── Génération paire de clés ── #
     elif not api_key_file and api_type == "paire":
-        container_ref = generer_cle_asymetrique(scoped_token, secret_name)
+        container_ref = generer_cle_asymetrique(bc, secret_name)
         container = bc.containers.get(container_ref)
         return {
             "container_ref":  container_ref,
@@ -93,7 +97,7 @@ def _traiter_cle(bc, scoped_token, données_cle):
 # --------------------------------------------------------------------- #
 # FONCTION POUR TRAITER L'AJOUT D'UN CERTIFICAT SSL/TLS                 #
 # --------------------------------------------------------------------- #
-def _traiter_certificat_ssl(bc, scoped_token, données_ssl):
+def _traiter_certificat_ssl(bc, données_ssl):
     
     secret_name   = données_ssl["secret_name"]
     ssl_cert_file = données_ssl.get("ssl_cert_file")
@@ -101,19 +105,19 @@ def _traiter_certificat_ssl(bc, scoped_token, données_ssl):
 
     # ── Upload certificat + clé ── #
     if ssl_cert_file and ssl_key_file:
-        secret_ref_cert = stocker_secret_barbican(
+        secret_ref_cert = stocker_certificat_barbican(
             bc=bc,
             secret_name=f"{secret_name}-certificate",
             secret_type="certificate",
             payload=ssl_cert_file,
-            payload_content_type="application/pkix-cert",
+            payload_content_type="text/plain",
         )
-        secret_ref_private = stocker_secret_barbican(
+        secret_ref_private = stocker_cle_barbican(
             bc=bc,
             secret_name=f"{secret_name}-private",
             secret_type="private",
             payload=ssl_key_file,
-            payload_content_type="application/octet-stream",
+            payload_content_type="text/plain",
         )
         container = bc.containers.create_certificate(
             name=f"{secret_name}-tls",
@@ -140,7 +144,7 @@ def _traiter_certificat_ssl(bc, scoped_token, données_ssl):
 
     # ── Génération CSR + CA ── #
     else:
-        container_ref = generer_ssl(bc, scoped_token, données_ssl)
+        container_ref = generer_ssl(bc, données_ssl)
         container = bc.containers.get(container_ref)
         return {
             "container_ref":  container_ref,
