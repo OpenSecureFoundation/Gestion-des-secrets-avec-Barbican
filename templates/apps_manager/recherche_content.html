@@ -1,0 +1,76 @@
+<div class="container-fluid p-4" style="background-color: var(--barbi-light-bg); min-height: 80vh;">
+
+  <div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+      <h3 class="fw-bold mb-1" style="color: #4a0e4e;">Résultats de recherche</h3>
+      <p class="text-muted small mb-0">
+        {% if q %}
+          <strong>{{ total }}</strong> application(s) pour « <em>{{ q }}</em> »
+        {% else %}
+          Toutes les applications et leurs secrets
+        {% endif %}
+      </p>
+    </div>
+  </div>
+
+  {% if q and not results %}
+  <div class="text-center my-5">
+    <i class="fas fa-search text-muted" style="font-size: 2.5rem;"></i>
+    <p class="mt-3 text-muted fst-italic">Aucun résultat pour « {{ q }} ».</p>
+  </div>
+  {% endif %}
+
+  {% for item in results %}
+  <div class="card border-0 shadow-sm mb-3" style="border-radius: 12px;">
+    <div class="card-body p-4">
+
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <div>
+          <h5 class="fw-bold mb-0" style="color: #4a0e4e;">
+            <i class="fas fa-th-large me-2"></i>
+            <a hx-get="{% url 'apps_manager:detail_app' %}?projet_id={{ item.projet.id_projet }}"
+               hx-target="#main-display" hx-push-url="true"
+               class="text-decoration-none" style="color: #4a0e4e; cursor: pointer;">
+              {{ item.projet.application.nom_app }}
+            </a>
+          </h5>
+          {% if item.projet.application.description_app %}
+          <p class="text-muted small mb-0">{{ item.projet.application.description_app|truncatechars:80 }}</p>
+          {% endif %}
+        </div>
+        <span class="badge rounded-pill" style="background:#f3e8f7; color:#4a0e4e; font-size:0.75rem;">
+          {{ item.conteneurs.count }} secret(s)
+        </span>
+      </div>
+
+      {% if item.conteneurs.count > 0 %}
+      <div class="row g-2">
+        {% for c in item.conteneurs %}
+        <div class="col-12 col-md-6">
+          <div class="p-3 rounded" style="background:#faf5ff; border: 1px solid #e9d5ff;">
+            <div class="d-flex align-items-center justify-content-between">
+              <span class="fw-semibold small">{{ c.nom_conteneur }}</span>
+              {% if c.type_conteneur == 'generic' %}
+                <span class="badge ms-2" style="font-size:0.7rem; background:#f3e8ff; color:#4a0e4e;">Clé API</span>
+              {% elif c.type_conteneur == 'rsa' %}
+                <span class="badge ms-2" style="font-size:0.7rem; background:#e8f0ff; color:#0d47a1;">Paire de clés</span>
+              {% else %}
+                <span class="badge ms-2" style="font-size:0.7rem; background:#e8fff0; color:#1b5e20;">Certificat SSL/TLS</span>
+              {% endif %}
+            </div>
+            <div class="mt-1 text-muted" style="font-size:0.75rem;">
+              v{{ c.version }}{% if c.date_expiration %} · expire le {{ c.date_expiration|date:"d/m/Y" }}{% endif %}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-muted small fst-italic mb-0">Aucun secret dans cette application.</p>
+      {% endif %}
+
+    </div>
+  </div>
+  {% endfor %}
+
+</div>

@@ -1,0 +1,144 @@
+<div class="container-fluid p-4" style="background-color: var(--barbi-light-bg); min-height: 80vh;">
+
+<div class="mb-4">
+    <h3 class="fw-bold mb-1 text-purple">Liste des applications</h3>
+    <p class="text-muted small mb-0">Gérez vos applications et leurs secrets associés
+      {% if q %}
+        &nbsp;<span class="badge" style="background:#f3e8f7; color:#4a0e4e; font-size:0.75rem;">
+          <i class="fas fa-filter me-1"></i>{{ q }}
+        </span>
+      {% endif %}
+    </p>
+</div>
+<div class="d-flex justify-content-end align-items-center mb-4">
+
+    <a hx-get="{% url 'apps_manager:creer_app' %}"
+       hx-target="#main-display"
+       hx-push-url="true"
+       class="btn px-4 text-white fw-bold btn-it"
+       style="background-color: #4a0e4e; border: none; cursor: pointer;">
+      <i class="fas fa-plus me-2"></i><span class="bl">Ajouter une application</span>
+    </a>
+  </div>
+
+  <!-- Barre de sélection multiple -->
+  <div id="selection-bar" class="d-none mb-3 p-2 rounded d-flex align-items-center gap-3"
+       style="background:#f8f0fb; border:1px solid #4a0e4e;">
+    <span class="small fw-semibold" style="color:#4a0e4e;">
+        <span id="selection-count">0</span> application(s) sélectionnée(s)
+    </span>
+    <button type="button"
+            class="btn btn-sm btn-danger ms-auto btn-it"
+            onclick="confirmerSuppressionSelection()"
+            id="btn-suppr-selection">
+        <i class="fas fa-trash-alt me-1"></i><span class="bl">Supprimer la sélection</span>
+    </button>
+    <button type="button" class="btn btn-sm btn-outline-secondary"
+            onclick="deselectionnerTout()">Tout désélectionner</button>
+  </div>
+
+  <!-- Formulaire de suppression multiple (caché) -->
+  <form id="form-suppr-selection"
+        hx-post="{% url 'apps_manager:supprimer_apps_selection' %}"
+        hx-swap="none">
+    {% csrf_token %}
+    <div id="hidden-projet-ids"></div>
+  </form>
+
+  <!-- Tout sélectionner -->
+  <div class="d-flex align-items-center gap-2 mb-2 px-1">
+    <input type="checkbox" class="form-check-input" id="select-all-apps"
+           onchange="toggleSelectionTouteApps(this.checked)"
+           style="width:1rem; height:1rem; cursor:pointer;">
+    <label for="select-all-apps" class="small text-muted mb-0" style="cursor:pointer;">Tout sélectionner</label>
+  </div>
+
+  <div class="apps-table-container d-none d-md-block mb-2">
+    <div class="row fw-bold text-muted small text-uppercase align-items-center gx-2 px-2">
+        <div class="col-auto" style="width:2rem;"></div>
+        <div class="col-md-3">ID</div>
+        <div class="col-md-2 d-flex align-items-center gap-1">
+            Nom
+            <span class="d-inline-flex flex-column lh-1 ms-1" style="gap:0;">
+                <a hx-get="{% url 'apps_manager:list_app' %}?sort=nom_asc{% if q %}&q={{ q|urlencode }}{% endif %}"
+                   hx-target="#apps-list" hx-swap="outerHTML" style="cursor:pointer; text-decoration:none; line-height:1;" title="Trier A → Z">
+                    <i class="fas fa-caret-up {% if sort == 'nom_asc' %}text-purple{% else %}text-muted opacity-50{% endif %}"></i>
+                </a>
+                <a hx-get="{% url 'apps_manager:list_app' %}?sort=nom_desc{% if q %}&q={{ q|urlencode }}{% endif %}"
+                   hx-target="#apps-list" hx-swap="outerHTML" style="cursor:pointer; text-decoration:none; line-height:1;" title="Trier Z → A">
+                    <i class="fas fa-caret-down {% if sort == 'nom_desc' %}text-purple{% else %}text-muted opacity-50{% endif %}"></i>
+                </a>
+            </span>
+        </div>
+        <div class="col-md-3">Description</div>
+        <div class="col-md-2 d-flex align-items-center gap-1">
+            Nombre de secret
+            <span class="d-inline-flex flex-column lh-1 ms-1" style="gap:0;">
+                <a hx-get="{% url 'apps_manager:list_app' %}?sort=secrets_asc{% if q %}&q={{ q|urlencode }}{% endif %}"
+                   hx-target="#apps-list" hx-swap="outerHTML" style="cursor:pointer; text-decoration:none; line-height:1;" title="Croissant">
+                    <i class="fas fa-caret-up {% if sort == 'secrets_asc' %}text-purple{% else %}text-muted opacity-50{% endif %}"></i>
+                </a>
+                <a hx-get="{% url 'apps_manager:list_app' %}?sort=secrets_desc{% if q %}&q={{ q|urlencode }}{% endif %}"
+                   hx-target="#apps-list" hx-swap="outerHTML" style="cursor:pointer; text-decoration:none; line-height:1;" title="Décroissant">
+                    <i class="fas fa-caret-down {% if sort == 'secrets_desc' %}text-purple{% else %}text-muted opacity-50{% endif %}"></i>
+                </a>
+            </span>
+        </div>
+        <div class="col-md-1"></div>
+    </div>
+  </div>
+
+  {% include "apps_manager/list_app_partiel.html" %}
+
+  <!-- Panneau de modification (chargé dynamiquement) -->
+  <div id="modifier-panel"></div>
+
+</div>
+
+<script>
+function mettreAjourBarreSelection() {
+    var all   = document.querySelectorAll('.case-app');
+    var cases = document.querySelectorAll('.case-app:checked');
+    var bar   = document.getElementById('selection-bar');
+    document.getElementById('selection-count').textContent = cases.length;
+    if (cases.length > 0) {
+        bar.classList.remove('d-none');
+        bar.classList.add('d-flex');
+    } else {
+        bar.classList.add('d-none');
+        bar.classList.remove('d-flex');
+    }
+    var selAll = document.getElementById('select-all-apps');
+    if (selAll) {
+        selAll.checked       = all.length > 0 && cases.length === all.length;
+        selAll.indeterminate = cases.length > 0 && cases.length < all.length;
+    }
+}
+
+function toggleSelectionTouteApps(checked) {
+    document.querySelectorAll('.case-app').forEach(function(c) { c.checked = checked; });
+    mettreAjourBarreSelection();
+}
+
+function deselectionnerTout() {
+    document.querySelectorAll('.case-app').forEach(function(c) { c.checked = false; });
+    mettreAjourBarreSelection();
+}
+
+function confirmerSuppressionSelection() {
+    var cases = document.querySelectorAll('.case-app:checked');
+    if (cases.length === 0) return;
+    if (!confirm('Supprimer définitivement ' + cases.length + ' application(s) et tous leurs secrets ?')) return;
+
+    var container = document.getElementById('hidden-projet-ids');
+    container.innerHTML = '';
+    cases.forEach(function(c) {
+        var input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'projet_ids';
+        input.value = c.value;
+        container.appendChild(input);
+    });
+    htmx.trigger('#form-suppr-selection', 'submit');
+}
+</script>

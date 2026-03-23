@@ -1,0 +1,121 @@
+<div id="apps-list">
+    {% for projet in projets %}
+    <div class="app-row shadow-sm rounded bg-white mb-3 p-3 border-start border-4 border-purple">
+        <div class="row align-items-center gy-2">
+
+            <!-- Checkbox sélection -->
+            <div class="col-auto">
+                <input type="checkbox"
+                       class="form-check-input case-app"
+                       value="{{ projet.id_projet }}"
+                       onchange="mettreAjourBarreSelection()"
+                       style="width:1.1rem; height:1.1rem; cursor:pointer;">
+            </div>
+
+            <!-- ID Application -->
+            <div class="col-12 col-md-3 d-flex align-items-center gap-2">
+                <span class="d-md-none fw-bold text-purple">ID&nbsp;: </span>
+                <code class="text-break small text-dark" style="max-width:190px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-block; vertical-align:middle;" title="{{ projet.application.id_app }}">{{ projet.application.id_app }}</code>
+            </div>
+
+            <!-- Nom App (cliquable → page détail) -->
+            <div class="col-6 col-md-2">
+                <span class="d-md-none d-block small text-muted">Nom</span>
+                <a hx-get="{% url 'apps_manager:detail_app' %}?projet_id={{ projet.id_projet }}"
+                   hx-target="#main-display"
+                   hx-push-url="true"
+                   class="text-decoration-none"
+                   style="color: #4a0e4e; cursor: pointer; font-size: inherit;"
+                   title="Afficher les secrets">
+                    {{ projet.application.nom_app }}
+                </a>
+            </div>
+
+            <!-- Description -->
+            <div class="col-12 col-md-3">
+                <span class="d-md-none d-block small text-muted">Description</span>
+                <span class="small text-muted">{{ projet.application.description_app|default:"-"|truncatechars:60 }}</span>
+            </div>
+
+            <!-- Nombre de secrets -->
+            <div class="col-6 col-md-1">
+                <span class="d-md-none d-block small text-muted">Nombre de secret</span>
+                <span class="badge bg-light text-dark border">{{ projet.nb_secrets }}</span>
+            </div>
+
+            <!-- Actions -->
+            <div class="col-12 col-md-2 d-flex justify-content-end align-items-center gap-3 mt-2 mt-md-0 border-top pt-2 pt-md-0 border-md-0">
+
+                <!-- BOUTON MODIFIER -->
+                <button type="button"
+                        class="btn p-0 border-0 bg-transparent shadow-none"
+                        hx-get="{% url 'apps_manager:modifier_app' %}?projet_id={{ projet.id_projet }}"
+                        hx-target="#main-display"
+                        hx-swap="innerHTML"
+                        hx-push-url="true"
+                        title="Modifier l'application">
+                    <i class="fas fa-pen" style="color: #4a0e4e; font-size: 1.1rem; cursor:pointer;"></i>
+                </button>
+
+                <!-- BOUTON SUPPRIMER -->
+                <form action="{% url 'apps_manager:supprimer_app' %}" method="POST"
+                    onsubmit="return confirm('Supprimer définitivement cette application et tous ses secrets ?');">
+                    {% csrf_token %}
+                    <input type="hidden" name="id_projet" value="{{ projet.id_projet }}">
+                    <button type="submit" class="btn p-0 border-0 bg-transparent shadow-none" title="Supprimer">
+                        <i class="fas fa-trash-alt" style="color: #dc3545; font-size: 1.1rem; cursor:pointer;"></i>
+                    </button>
+                </form>
+            </div>
+
+        </div>
+    </div>
+    {% empty %}
+    <div class="empty-message text-center my-5">
+        <p class="fst-italic text-muted">Vous n'avez pas d'application pour le moment...</p>
+    </div>
+    {% endfor %}
+
+    {% if page_obj.paginator.num_pages > 1 %}
+    <nav class="d-flex justify-content-center align-items-center gap-1 mt-3 flex-wrap">
+
+        {% if page_obj.has_previous %}
+        <a hx-get="{% url 'apps_manager:list_app' %}?page={{ page_obj.previous_page_number }}{% if sort %}&sort={{ sort }}{% endif %}{% if q %}&q={{ q|urlencode }}{% endif %}"
+           hx-target="#apps-list" hx-swap="outerHTML"
+           class="btn btn-sm btn-outline-secondary" style="cursor:pointer;">
+            <i class="fas fa-chevron-left"></i>
+        </a>
+        {% else %}
+        <button class="btn btn-sm btn-outline-secondary" disabled>
+            <i class="fas fa-chevron-left"></i>
+        </button>
+        {% endif %}
+
+        {% for num in page_obj.paginator.page_range %}
+            {% if num == page_obj.number %}
+            <button class="btn btn-sm fw-bold" style="background:#4a0e4e; color:#fff; min-width:2rem;">{{ num }}</button>
+            {% elif num == 1 or num == page_obj.paginator.num_pages or num >= page_obj.number|add:"-2" and num <= page_obj.number|add:"2" %}
+            <a hx-get="{% url 'apps_manager:list_app' %}?page={{ num }}{% if sort %}&sort={{ sort }}{% endif %}{% if q %}&q={{ q|urlencode }}{% endif %}"
+               hx-target="#apps-list" hx-swap="outerHTML"
+               class="btn btn-sm btn-outline-secondary" style="cursor:pointer; min-width:2rem;">{{ num }}</a>
+            {% elif num == page_obj.number|add:"-3" or num == page_obj.number|add:"3" %}
+            <span class="text-muted px-1">…</span>
+            {% endif %}
+        {% endfor %}
+
+        {% if page_obj.has_next %}
+        <a hx-get="{% url 'apps_manager:list_app' %}?page={{ page_obj.next_page_number }}{% if sort %}&sort={{ sort }}{% endif %}{% if q %}&q={{ q|urlencode }}{% endif %}"
+           hx-target="#apps-list" hx-swap="outerHTML"
+           class="btn btn-sm btn-outline-secondary" style="cursor:pointer;">
+            <i class="fas fa-chevron-right"></i>
+        </a>
+        {% else %}
+        <button class="btn btn-sm btn-outline-secondary" disabled>
+            <i class="fas fa-chevron-right"></i>
+        </button>
+        {% endif %}
+
+    </nav>
+    {% endif %}
+
+</div>
