@@ -30,10 +30,20 @@
             </small>
         </div>
 
-        <div class="mb-4">
+        <div class="mb-3">
             <label class="form-label fw-semibold">Durée de validité (jours)</label>
             <input type="number" name="duree_validite" class="form-control"
                    value="{{ conteneur.duree_validite|default:'' }}" min="1">
+        </div>
+
+        <div class="mb-4">
+            <label class="form-label fw-semibold">Délai d'anticipation du renouvellement (jours)</label>
+            <input type="number" name="delai_anticipation" class="form-control"
+                   value="{{ conteneur.delai_anticipation }}" min="1">
+            <small class="text-muted">
+                <i class="fas fa-info-circle me-1"></i>
+                Alerte et renouvellement automatique déclenchés X jours avant l'expiration.
+            </small>
         </div>
 
         <div class="d-flex gap-2 justify-content-end">

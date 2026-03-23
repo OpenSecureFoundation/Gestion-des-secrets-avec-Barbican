@@ -92,7 +92,13 @@ def _traiter_cle(bc, données_cle):
             ]
         }
 
-    
+    else:
+        raise ValueError(
+            f"Combinaison invalide : type='{api_type}', "
+            f"fichier={'présent' if api_key_file else 'absent'}. "
+            "Vérifiez les champs du formulaire."
+        )
+
 
 # --------------------------------------------------------------------- #
 # FONCTION POUR TRAITER L'AJOUT D'UN CERTIFICAT SSL/TLS                 #

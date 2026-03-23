@@ -1,4 +1,14 @@
-<div id="dashboard-container" class="container-fluid p-4" style="background-color: var(--barbi-light-bg); min-height: 80vh;">
+<style>
+@media (max-width: 575px) {
+  .dash-stat-icon { width: 38px !important; height: 38px !important; }
+  .dash-stat-icon i { font-size: 1.1rem !important; }
+  .dash-stat-number { font-size: 1.5rem !important; }
+  .dash-chart-wrap { max-height: 180px !important; }
+  #dashboard-container .card.p-4 { padding: 0.85rem !important; }
+}
+</style>
+
+<div id="dashboard-container" class="container-fluid p-3 p-md-4" style="background-color: var(--barbi-light-bg); min-height: 80vh;">
 
   <h3 class="fw-bold mb-1 text-purple">Dashboard</h3>
   <p class="text-muted small mb-4">
@@ -20,12 +30,12 @@
            onmouseenter="this.style.boxShadow='0 4px 16px rgba(74,14,78,.18)'"
            onmouseleave="this.style.boxShadow=''">
         <div class="d-flex align-items-center justify-content-center h-100 gap-3">
-          <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+          <div class="dash-stat-icon rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
                style="width:56px; height:56px; background:#f3e8ff;">
             <i class="fas fa-th-large" style="font-size:1.6rem; color:#4a0e4e;"></i>
           </div>
           <div>
-            <div style="font-size:2.2rem; font-weight:700; color:#4a0e4e; line-height:1;">{{ total_apps }}</div>
+            <div class="dash-stat-number" style="font-size:2.2rem; font-weight:700; color:#4a0e4e; line-height:1;">{{ total_apps }}</div>
             <div class="text-muted small mt-1">Applications</div>
           </div>
         </div>
@@ -40,12 +50,12 @@
     <div class="col-6">
       <div class="card border-0 shadow-sm rounded-3 bg-white h-100 p-3">
         <div class="d-flex align-items-center justify-content-center h-100 gap-3">
-          <div class="rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
+          <div class="dash-stat-icon rounded-3 d-flex align-items-center justify-content-center flex-shrink-0"
                style="width:56px; height:56px; background:#f3e8ff;">
             <i class="fas fa-key" style="font-size:1.6rem; color:#4a0e4e;"></i>
           </div>
           <div>
-            <div style="font-size:2.2rem; font-weight:700; color:#4a0e4e; line-height:1;">{{ total_secrets }}</div>
+            <div class="dash-stat-number" style="font-size:2.2rem; font-weight:700; color:#4a0e4e; line-height:1;">{{ total_secrets }}</div>
             <div class="text-muted small mt-1">Secrets</div>
           </div>
         </div>
@@ -62,7 +72,7 @@
       <div class="card border-0 shadow-sm rounded-3 bg-white p-4 h-100">
         <h6 class="fw-semibold text-purple mb-3">Répartition des types de secrets</h6>
         {% if total_secrets > 0 %}
-        <div style="max-height:260px; display:flex; justify-content:center;">
+        <div class="dash-chart-wrap" style="max-height:260px; display:flex; justify-content:center;">
           <canvas id="chartTypes"></canvas>
         </div>
         {% else %}
@@ -76,7 +86,7 @@
       <div class="card border-0 shadow-sm rounded-3 bg-white p-4 h-100">
         <h6 class="fw-semibold text-purple mb-3">Applications avec / sans secrets</h6>
         {% if total_apps > 0 %}
-        <div style="max-height:260px; display:flex; justify-content:center;">
+        <div class="dash-chart-wrap" style="max-height:260px; display:flex; justify-content:center;">
           <canvas id="chartApps"></canvas>
         </div>
         {% else %}
@@ -88,9 +98,9 @@
     <!-- Taux de renouvellement -->
     <div class="col-12 col-md-4">
       <div class="card border-0 shadow-sm rounded-3 bg-white p-4 h-100">
-        <h6 class="fw-semibold text-purple mb-3">Taux de renouvellement</h6>
+        <h6 class="fw-semibold text-purple mb-3">Taux de renouvellement des secrets</h6>
         {% if total_secrets > 0 %}
-        <div style="max-height:260px; display:flex; justify-content:center;">
+        <div class="dash-chart-wrap" style="max-height:260px; display:flex; justify-content:center;">
           <canvas id="chartRenewed"></canvas>
         </div>
         {% else %}
@@ -161,7 +171,7 @@
             </th>
 
             <!-- Type -->
-            <th>
+            <th class="d-none d-sm-table-cell">
               Type
               {% if sort_by == 'type_asc' %}
                 <a hx-get="{% url 'apps_manager:dashboard' %}?sort=type_desc{% if q %}&q={{ q|urlencode }}{% endif %}"
@@ -185,7 +195,7 @@
             </th>
 
             <!-- Date d'expiration -->
-            <th>
+            <th class="d-none d-md-table-cell">
               Date d'expiration
               {% if sort_by == 'date_asc' %}
                 <a hx-get="{% url 'apps_manager:dashboard' %}?sort=date_desc{% if q %}&q={{ q|urlencode }}{% endif %}"
@@ -248,7 +258,7 @@
               </a>
             </td>
             <td>{{ c.nom_conteneur }}</td>
-            <td>
+            <td class="d-none d-sm-table-cell">
               {% if c.type_conteneur == 'generic' %}
                 <span class="badge rounded-pill" style="background:#f3e8ff; color:#4a0e4e;">Clé API</span>
               {% elif c.type_conteneur == 'rsa' %}
@@ -257,7 +267,7 @@
                 <span class="badge rounded-pill" style="background:#e8fff0; color:#1b5e20;">Certificat SSL/TLS</span>
               {% endif %}
             </td>
-            <td>{{ c.date_expiration|date:"d/m/Y" }}</td>
+            <td class="d-none d-md-table-cell">{{ c.date_expiration|date:"d/m/Y" }}</td>
             <td>
               {% if c.jours_restants <= 7 %}
                 <span class="badge bg-danger">{{ c.jours_restants }}j</span>

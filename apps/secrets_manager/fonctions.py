@@ -223,7 +223,7 @@ def generer_csr(bc, container_ref, subject_dn):
         if valeur
     ]
 
-        # 6. Génération de la CSR
+    # 6. Génération de la CSR
     try:
         csr = (
             x509.CertificateSigningRequestBuilder()
@@ -424,45 +424,62 @@ def stocker_cle_unique_conteneur_barbican(bc, secret_name, secret_ref):
 # ------------------------------------------------------------------ #
 # FONCTION POUR SUPPRIMER UN SECRET DANS BARBICAN                    #
 # ------------------------------------------------------------------ #
-def supprimer_secret_barbican(bc, secret_ref):
-    try:
-        secret = bc.secrets.get(secret_ref)
-        secret.delete()
-        print(f"Secret supprimé dans Barbican : {secret_ref}")
-        return True
-    except barbican_exceptions.HTTPClientError as e:
-        if e.status_code == 404:
-            print(f"Secret déjà absent de Barbican : {secret_ref}")
+def supprimer_secret_barbican(bc, secret_ref, bc_fallback=None):
+    """Supprime un secret Barbican. Si 403 et bc_fallback fourni, réessaie avec le client de secours."""
+    for client in ([bc, bc_fallback] if bc_fallback else [bc]):
+        try:
+            secret = client.secrets.get(secret_ref)
+            secret.delete()
+            print(f"Secret supprimé dans Barbican : {secret_ref}")
             return True
-        raise BarbicanConnectionError(
-            f"Erreur Barbican lors de la suppression du secret : {str(e)}"
-        )
-    except Exception as e:
-        raise BarbicanConnectionError(
-            f"Erreur inattendue lors de la suppression du secret : {str(e)}"
-        )
+        except barbican_exceptions.HTTPClientError as e:
+            if e.status_code == 404:
+                print(f"Secret déjà absent de Barbican : {secret_ref}")
+                return True
+            if e.status_code == 403:
+                if client is bc and bc_fallback:
+                    continue
+                raise BarbicanConnectionError(
+                    f"Erreur Barbican lors de la suppression du secret : {str(e)}"
+                )
+            raise BarbicanConnectionError(
+                f"Erreur Barbican lors de la suppression du secret : {str(e)}"
+            )
+        except Exception as e:
+            raise BarbicanConnectionError(
+                f"Erreur inattendue lors de la suppression du secret : {str(e)}"
+            )
+    return False
 
 
 # ------------------------------------------------------------------ #
 # FONCTION POUR SUPPRIMER UN CONTENEUR DANS BARBICAN                 #
 # ------------------------------------------------------------------ #
-def supprimer_conteneur_barbican(bc, container_ref):
-    try:
-        container = bc.containers.get(container_ref)
-        container.delete()
-        print(f"Conteneur supprimé dans Barbican : {container_ref}")
-        return True
-    except barbican_exceptions.HTTPClientError as e:
-        if e.status_code == 404:
-            print(f"Conteneur déjà absent de Barbican : {container_ref}")
+def supprimer_conteneur_barbican(bc, container_ref, bc_fallback=None):
+    """Supprime un conteneur Barbican. Si 403 et bc_fallback fourni, réessaie avec le client de secours."""
+    for client in ([bc, bc_fallback] if bc_fallback else [bc]):
+        try:
+            container = client.containers.get(container_ref)
+            container.delete()
+            print(f"Conteneur supprimé dans Barbican : {container_ref}")
             return True
-        raise BarbicanConnectionError(
-            f"Erreur Barbican lors de la suppression du conteneur : {str(e)}"
-        )
-    except Exception as e:
-        raise BarbicanConnectionError(
-            f"Erreur inattendue lors de la suppression du conteneur : {str(e)}"
-        )
+        except barbican_exceptions.HTTPClientError as e:
+            if e.status_code == 404:
+                print(f"Conteneur déjà absent de Barbican : {container_ref}")
+                return True
+            if e.status_code == 403:
+                if client is bc and bc_fallback:
+                    continue  # réessayer avec le client de secours
+                print(f"[WARN] Suppression non autorisée pour le conteneur {container_ref} — ignoré (ACL Barbican).")
+                return False
+            raise BarbicanConnectionError(
+                f"Erreur Barbican lors de la suppression du conteneur : {str(e)}"
+            )
+        except Exception as e:
+            raise BarbicanConnectionError(
+                f"Erreur inattendue lors de la suppression du conteneur : {str(e)}"
+            )
+    return False
 
 
 # ------------------------------------------------------------------ #

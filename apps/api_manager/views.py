@@ -151,8 +151,11 @@ def api_lire_secret_view(request, nom_secret):
 
     try:
         resultat = _lire_valeur_barbican(bc, conteneur, request.GET.get('type', 'public'))
+    except ValueError as e:
+        logger.warning("API lire_secret: paramètre invalide — %s", e)
+        return JsonResponse({'erreur': str(e)}, status=400)
     except Exception as e:
-        logger.error("API lire_secret: lecture Barbican échouée — %s", e)
+        logger.error("API lire_secret: lecture Barbican échouée — %s", e, exc_info=True)
         return JsonResponse({'erreur': 'Impossible de lire le secret.'}, status=500)
 
     # Notification asynchrone (non bloquante)
@@ -213,7 +216,7 @@ def _lire_valeur_barbican(bc, conteneur, key_type):
         if key_type not in ('private', 'public'):
             raise ValueError("Paramètre 'type' invalide. Utilisez 'private' ou 'public'.")
         type_secret_cible = 'private' if key_type == 'private' else 'public'
-        secret_db = conteneur.secret.filter(type_secret__icontains=type_secret_cible).first()
+        secret_db = conteneur.secret.filter(nom_secret__endswith=f'-{type_secret_cible}').first()
         if not secret_db:
             raise ValueError(f"Clé {key_type} introuvable dans ce conteneur RSA.")
         secret_barb = bc.secrets.get(secret_db.ref_secret)

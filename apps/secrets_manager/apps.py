@@ -107,6 +107,21 @@ def _executer_renouvellements():
                 f"expiration : {conteneur.date_expiration.date()}"
             )
 
+            # Notification e-mail au propriétaire
+            try:
+                from api_manager.notifications import notifier_secret_renouvele
+                utilisateur = conteneur.projet.utilisateur
+                nom_app = (
+                    conteneur.projet.application.nom_app
+                    if conteneur.projet.application
+                    else conteneur.projet.nom_projet
+                )
+                notifier_secret_renouvele(utilisateur, nom, nom_app, mode="automatique")
+            except Exception as notif_err:
+                logger.warning(
+                    f"[AUTO-RENEWAL] Notification non envoyée pour '{nom}' : {notif_err}"
+                )
+
         except Exception as e:
             logger.error(
                 f"[AUTO-RENEWAL] Erreur renouvellement '{nom}' (projet {projet_id}) : {e}",

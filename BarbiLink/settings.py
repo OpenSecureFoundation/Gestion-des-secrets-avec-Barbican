@@ -45,7 +45,7 @@ MESSAGE_TAGS = {
 }
 
 # Intervalle de vérification du renouvellement automatique (en secondes)
-AUTO_RENEWAL_INTERVAL = 86400  # 1 jour
+AUTO_RENEWAL_INTERVAL = 5  # 5s
 
 # Chemin vers la CA interne 
 CA_CERT_PATH = os.path.join(BASE_DIR, 'BarbiLink', 'CA_OpenSSL', 'certificat', 'ssl-cert-snakeoil.pem')
@@ -113,7 +113,7 @@ SECRET_KEY = 'django-insecure-0h^gni4(qmsjrwk(j+$_fe7#vf4mr4*eon%r0c#kms-izc-&pe
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ['192.168.100.251', 'localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['192.168.100.251', '192.168.1.180', 'localhost', '127.0.0.1', 'barbilink.internal']
 
 # Definition de notre model user
 AUTH_USER_MODEL = 'accounts.Utilisateur'

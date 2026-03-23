@@ -130,6 +130,15 @@ def ajouter_secret_view(request):
                     messages.success(request, f"Application « {nom_app} » et secret « {nom_secret} » créés avec succès.")
                 else:
                     messages.success(request, f"Secret « {nom_secret} » ajouté avec succès.")
+                if request.headers.get("HX-Request"):
+                    response = HttpResponse()
+                    if projet_id:
+                        response["HX-Redirect"] = reverse("apps_manager:detail_app") + f"?projet_id={projet_id}"
+                    else:
+                        response["HX-Redirect"] = reverse("apps_manager:list_app")
+                    return response
+                if projet_id:
+                    return redirect(reverse("apps_manager:detail_app") + f"?projet_id={projet_id}")
                 return redirect("apps_manager:list_app")
 
             except BarbicanConnectionError as e:
@@ -175,13 +184,12 @@ def ajouter_secret_view(request):
                     e,
                 )
 
-        # Formulaire invalide
+        # Formulaire invalide — les erreurs sont affichées via form.errors dans le template
         logger.warning(f"Formulaire d'ajout de secret invalide : {form.errors}")
         return render(request, template_partiel, {
             "form":      form,
             "form_data": request.POST,
             "projet_id": projet_id,
-            "error":     "Formulaire invalide. Vérifiez les champs et réessayez.",
         })
 
     # ── GET ── #
@@ -370,12 +378,10 @@ def _effectuer_renouvellement(bc, conteneur):
     else:
         raise BarbicanConnectionError(f"Type de conteneur inconnu : '{type_c}'")
 
-    # ── 2. Rotation des refs sans supprimer le conteneur actif ── #
+    # ── 2. Rotation des refs (l'ancien conteneur reste dans Barbican, supprimé
+    #       uniquement quand l'utilisateur supprime le secret via l'interface) ── #
     if conteneur.ref_new_conteneur:
         # ref_new est déjà occupé : déplacer ref_new → ref_old
-        # L'ancien ref_old (le plus vieux) est supprimé de Barbican
-        if conteneur.ref_old_conteneur:
-            supprimer_conteneur_barbican(bc, conteneur.ref_old_conteneur)
         conteneur.ref_old_conteneur = conteneur.ref_new_conteneur
         conteneur.ref_new_conteneur = new_container_ref
     else:
@@ -393,7 +399,7 @@ def _effectuer_renouvellement(bc, conteneur):
             version=new_version,
         )
     conteneur.version         = new_version
-    conteneur.date_expiration = timezone.now() + timedelta(days=conteneur.duree_validite)
+    conteneur.date_expiration = conteneur.date_expiration + timedelta(days=conteneur.duree_validite)
     conteneur.save()
 
     logger.info(

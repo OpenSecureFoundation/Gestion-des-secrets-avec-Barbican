@@ -84,8 +84,13 @@ def creer_keystone_projet(admin_token, name_projet, description, user_id, admin_
             if role_res.status_code == 204 and admin_res.status_code == 204 and barbican_res.status_code == 204:
                 logger.info("Rôles assignés au projet %s (user, admin, barbican).", project_id)
             else:
-                logger.warning("Erreur assignation rôle projet %s : %s %s",
-                               project_id, role_res.status_code, role_res.text)
+                logger.warning(
+                    "Erreur assignation rôle projet %s — user:%s admin:%s barbican:%s",
+                    project_id,
+                    role_res.status_code,
+                    admin_res.status_code,
+                    barbican_res.status_code,
+                )
 
             return project_data
         else:
@@ -154,7 +159,7 @@ def creer_app_view(request):
         })
 
     # Création du Projet Keystone
-    nom_projet_ks = f"projet_{nom_app}"
+    nom_projet_ks = f"{request.user.username}_{nom_app}_projet"
     project_data = creer_keystone_projet(admin_token, nom_projet_ks, description, request.user.id_keystone, admin_id, barbican_id, request.user.role)
 
     if not project_data:
@@ -417,21 +422,18 @@ def supprimer_app_view(request):
     conteneurs = projet.conteneur.prefetch_related('secret').all()
     if conteneurs.exists():
         try:
-            bc = get_barbican_client(user_token, id_projet_ks)
+            bc_user  = get_barbican_client(user_token, id_projet_ks)
+            bc_admin = get_barbican_client(token_keystone_scope(admin_token, id_projet_ks), id_projet_ks)
             for conteneur in conteneurs:
-                # Suppression de chaque secret individuel
                 for secret in conteneur.secret.all():
-                    supprimer_secret_barbican(bc, secret.ref_secret)
-                # Suppression du conteneur principal (ref_old)
+                    supprimer_secret_barbican(bc_user, secret.ref_secret, bc_fallback=bc_admin)
                 if conteneur.ref_old_conteneur:
-                    supprimer_conteneur_barbican(bc, conteneur.ref_old_conteneur)
-                # Suppression du conteneur de rotation (ref_new) si existant
+                    supprimer_conteneur_barbican(bc_user, conteneur.ref_old_conteneur, bc_fallback=bc_admin)
                 if conteneur.ref_new_conteneur:
-                    supprimer_conteneur_barbican(bc, conteneur.ref_new_conteneur)
+                    supprimer_conteneur_barbican(bc_user, conteneur.ref_new_conteneur, bc_fallback=bc_admin)
             print(f"Conteneurs et secrets Barbican supprimés pour le projet {id_projet_ks}.")
             logger.info("Conteneurs et secrets Barbican supprimés pour le projet %s.", id_projet_ks)
         except BarbicanConnectionError as e:
-            # On log l'erreur mais on continue pour nettoyer Keystone et la BD
             logger.warning("Erreur Barbican lors de la suppression de l'app %s : %s", app_id, e)
 
     # --- ÉTAPE KEYSTONE ---
@@ -479,14 +481,15 @@ def supprimer_apps_selection_view(request):
             conteneurs = projet.conteneur.prefetch_related('secret').all()
             if conteneurs.exists():
                 try:
-                    bc = get_barbican_client(user_token, projet_id)
+                    bc_user  = get_barbican_client(user_token, projet_id)
+                    bc_admin = get_barbican_client(token_keystone_scope(admin_token, projet_id), projet_id)
                     for conteneur in conteneurs:
                         for secret in conteneur.secret.all():
-                            supprimer_secret_barbican(bc, secret.ref_secret)
+                            supprimer_secret_barbican(bc_user, secret.ref_secret, bc_fallback=bc_admin)
                         if conteneur.ref_old_conteneur:
-                            supprimer_conteneur_barbican(bc, conteneur.ref_old_conteneur)
+                            supprimer_conteneur_barbican(bc_user, conteneur.ref_old_conteneur, bc_fallback=bc_admin)
                         if conteneur.ref_new_conteneur:
-                            supprimer_conteneur_barbican(bc, conteneur.ref_new_conteneur)
+                            supprimer_conteneur_barbican(bc_user, conteneur.ref_new_conteneur, bc_fallback=bc_admin)
                 except BarbicanConnectionError as e:
                     logger.warning(f"Erreur Barbican suppression en masse {projet_id} : {e}")
 
@@ -526,17 +529,19 @@ def supprimer_conteneurs_selection_view(request):
     for conteneur_id in conteneur_ids:
         try:
             conteneur = ConteneurSecret.objects.get(id=conteneur_id, projet__utilisateur=request.user)
-            pid       = conteneur.projet.id_projet
+            pid        = conteneur.projet.id_projet
             user_token = token_keystone_scope(request.session.get('keystone_token'), pid)
+            admin_tok  = get_admin_token()
 
             try:
-                bc = get_barbican_client(user_token, pid)
+                bc_user  = get_barbican_client(user_token, pid)
+                bc_admin = get_barbican_client(token_keystone_scope(admin_tok, pid), pid)
                 for secret in conteneur.secret.all():
-                    supprimer_secret_barbican(bc, secret.ref_secret)
+                    supprimer_secret_barbican(bc_user, secret.ref_secret, bc_fallback=bc_admin)
                 if conteneur.ref_old_conteneur:
-                    supprimer_conteneur_barbican(bc, conteneur.ref_old_conteneur)
+                    supprimer_conteneur_barbican(bc_user, conteneur.ref_old_conteneur, bc_fallback=bc_admin)
                 if conteneur.ref_new_conteneur:
-                    supprimer_conteneur_barbican(bc, conteneur.ref_new_conteneur)
+                    supprimer_conteneur_barbican(bc_user, conteneur.ref_new_conteneur, bc_fallback=bc_admin)
             except BarbicanConnectionError as e:
                 logger.warning(f"Erreur Barbican suppression conteneur {conteneur_id} : {e}")
 
@@ -713,9 +718,10 @@ def modifier_conteneur_view(request):
             'projet':    projet,
         })
 
-    nouveau_nom   = request.POST.get('nom_conteneur', '').strip()
-    nouvelle_duree = request.POST.get('duree_validite', '').strip()
-    erreurs       = []
+    nouveau_nom        = request.POST.get('nom_conteneur', '').strip()
+    nouvelle_duree     = request.POST.get('duree_validite', '').strip()
+    nouveau_delai      = request.POST.get('delai_anticipation', '').strip()
+    erreurs            = []
     projet_id     = projet.id_projet
 
     user_token_actuel = request.session.get('keystone_token')
@@ -750,11 +756,23 @@ def modifier_conteneur_view(request):
             if duree_int < 1:
                 raise ValueError("La durée doit être d'au moins 1 jour.")
             if duree_int != conteneur.duree_validite:
+                ancienne_expiration = conteneur.date_expiration or timezone.now()
                 conteneur.duree_validite  = duree_int
-                conteneur.date_expiration = timezone.now() + timedelta(days=duree_int)
+                conteneur.date_expiration = ancienne_expiration + timedelta(days=duree_int)
                 conteneur.save()
         except ValueError as e:
             erreurs.append(f"Durée de validité invalide : {str(e)}")
+
+    if nouveau_delai:
+        try:
+            delai_int = int(nouveau_delai)
+            if delai_int < 1:
+                raise ValueError("Le délai doit être d'au moins 1 jour.")
+            if delai_int != conteneur.delai_anticipation:
+                conteneur.delai_anticipation = delai_int
+                conteneur.save()
+        except ValueError as e:
+            erreurs.append(f"Délai d'anticipation invalide : {str(e)}")
 
     if erreurs:
         conteneur.refresh_from_db()
@@ -893,15 +911,17 @@ def supprimer_conteneur_view(request):
     projet_id         = projet.id_projet
     user_token_actuel = request.session.get('keystone_token')
     user_token        = token_keystone_scope(user_token_actuel, projet_id)
+    admin_tok         = get_admin_token()
 
     try:
-        bc = get_barbican_client(user_token, projet_id)
+        bc_user  = get_barbican_client(user_token, projet_id)
+        bc_admin = get_barbican_client(token_keystone_scope(admin_tok, projet_id), projet_id)
         for secret in conteneur.secret.all():
-            supprimer_secret_barbican(bc, secret.ref_secret)
+            supprimer_secret_barbican(bc_user, secret.ref_secret, bc_fallback=bc_admin)
         if conteneur.ref_old_conteneur:
-            supprimer_conteneur_barbican(bc, conteneur.ref_old_conteneur)
+            supprimer_conteneur_barbican(bc_user, conteneur.ref_old_conteneur, bc_fallback=bc_admin)
         if conteneur.ref_new_conteneur:
-            supprimer_conteneur_barbican(bc, conteneur.ref_new_conteneur)
+            supprimer_conteneur_barbican(bc_user, conteneur.ref_new_conteneur, bc_fallback=bc_admin)
     except BarbicanConnectionError as e:
         logger.warning(f"Erreur Barbican suppression conteneur {conteneur_id} : {e}")
 
