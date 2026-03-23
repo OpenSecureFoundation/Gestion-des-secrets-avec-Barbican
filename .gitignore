@@ -4,7 +4,8 @@ __pycache__/*
 venv/
 .env
 media/*
-BarbiLink/certs/
+BarbiLink/CA_OpenSSL/
+.claude
 
 # Sauf les fichiers .gitkeep pour garder la structure des dossiers
 !Media/.gitkeep
